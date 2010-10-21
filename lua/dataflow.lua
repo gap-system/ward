@@ -217,12 +217,12 @@ local function init_properties(node)
   if ast then
     if pass1 then
       ast:fix_types()
-      ast:track_aliases_and_guards(node.assign, node.wg, node.rg)
-      for _, pair in ipairs(node.assign) do
-	node.assignto[pair[1]] = true
-	if pair[2] then
-	  node.assignfrom[pair[2]] = pair[1]
-	end
+    end
+    ast:track_aliases_and_guards(node.assign, node.wg, node.rg)
+    for _, pair in ipairs(node.assign) do
+      node.assignto[pair[1]] = true
+      if pair[2] then
+	node.assignfrom[pair[2]] = pair[1]
       end
     end
     ast:bag_access(node.reads, node.writes, node.reads, node.writes, 0)
