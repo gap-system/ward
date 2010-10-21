@@ -598,6 +598,7 @@ ExprAggregate = class(Expr)
 
 function ExprAggregate:create(pos)
   self.pos = pos
+  self.type = type_unknown
 end
 
 name_classes()
