@@ -743,7 +743,7 @@ local grammar = pattern {
   type_declaration =
     action(pattern "(" * sp * rule "type_declaration" * sp * pattern ")" *
       rule "type_postfix", build_type_postfix) +
-    action(rule "const_or_volatile" * sp * pattern "*" * sp *
+    action(rule "const_or_volatile" * sp * (pattern "*" + pattern "^") * sp *
            rule "type_declaration",
       function(s, p, c)
         push(c, "*")
