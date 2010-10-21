@@ -22,6 +22,7 @@ NODOTABIVER= 51
 #
 # LuaJIT builds as a native 32 or 64 bit binary by default.
 CC= gcc
+CFLAGS=-DLUA_ROOT=\"$(LUA_ROOT)\"
 #
 # Use this if you want to force a 32 bit build on a 64 bit multilib OS.
 #CC= gcc -m32

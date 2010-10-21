@@ -14,7 +14,7 @@ esac
 cd $LUA_ROOT/ext/lua-5.1.4
 make INSTALL_TOP=$LUA_ROOT $PLATFORM install
 cd $LUA_ROOT/ext/LuaJIT-2.0.0-beta3
-make PREFIX=$LUA_ROOT CFLAGS=-DLUA_ROOT=\""$LUA_ROOT/"\" install
+make PREFIX=$LUA_ROOT install
 cd $LUA_ROOT/bin
 ln -s luajit-2.0.0-beta3 luajit2
 export PATH=$LUA_ROOT/bin:$PATH
