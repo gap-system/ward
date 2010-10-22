@@ -1065,7 +1065,7 @@ local grammar = pattern {
   function_declaration =
     rule "storage_classifiers" * rule "basetype" * (sp * pattern "*")^0
     * sp * ident * sp * rule "function_arguments" *
-    (sp * attributes)^-1 * sp * pattern ";",
+    rule "opt_asm_declaration" * (sp * attributes)^-1 * sp * pattern ";",
   function_definition =
     action(rule "storage_classifiers" *
       rule "const_or_volatile" * rule "basetype" *
