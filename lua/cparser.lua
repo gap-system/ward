@@ -135,7 +135,7 @@ local keywords = {
   'static', '_Complex', 'default', 'inline', 'struct', '_Imaginary', 'do',
   'int', 'switch', 'double', 'long', 'typedef', 'else', 'register',
   'union', '__asm', '__asm__', '__thread', '__builtin_va_list', '__inline__',
-  '__builtin_va_arg',
+  '__builtin_va_arg', '__extension__', '__const',
 }
 
 local is_keyword = { }
@@ -708,7 +708,6 @@ local grammar = pattern {
     keyword "signed" * sp * rule "integral_type" +
     keyword "unsigned" * sp * rule "integral_type" +
     keyword "_Bool" * value(type_int),
-  type_qualifier = (keyword "const" * sp + keyword "volatile" * sp) ^ 0,
   enum_item = ident * (sp * "=" * sp * rule "expression")^-1,
   enum_list = rule "enum_item" *
     (sp * pattern "," * sp * rule "enum_item")^0 *
@@ -738,8 +737,9 @@ local grammar = pattern {
     sp * pattern ";" , build_typed_declarations),
   type_spec = action(rule "type_prefix" * sp * rule "type_declaration",
     build_typed_declaration),
-  type_prefix = rule "type_qualifier" * rule "basetype",
-  const_or_volatile_prefix = (keyword "const" * sp + keyword "volatile" * sp),
+  type_prefix = rule "const_or_volatile" * rule "basetype",
+  const_or_volatile_prefix = (keyword "const" * sp + keyword "volatile" * sp
+    + keyword "__const" * sp),
   const_or_volatile = (rule "const_or_volatile_prefix")^0,
   type_declaration =
     action(pattern "(" * sp * rule "type_declaration" * sp * pattern ")" *
