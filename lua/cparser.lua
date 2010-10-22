@@ -736,7 +736,8 @@ local grammar = pattern {
     (rule "record_member" * sp)^0 *
     pattern "}",
   record_member = action(rule "type_prefix" * sp * rule "type_declarations" *
-    sp * pattern ";" , build_typed_declarations),
+    sp * pattern ";" , build_typed_declarations)+
+    keyword "__extension" * sp * rule "record_member",
   type_spec = action(rule "type_prefix" * sp * rule "type_declaration",
     build_typed_declaration),
   type_prefix = rule "const_or_volatile" * rule "basetype",
