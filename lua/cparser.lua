@@ -1064,7 +1064,8 @@ local grammar = pattern {
   function_definition =
     action(rule "storage_classifiers" *
       rule "const_or_volatile" * rule "basetype" *
-      aggregate((sp * capture(pattern "*"))^0) * sp * ident * sp *
+      aggregate((sp * capture(pattern "*"))^0) * sp *
+      (attributes * sp)^-1 * ident * sp *
       rule "function_arguments" * sp * rule "compound_statement" *
       (sp * pattern ";")^-1,
       function(str, pos, storage, basetype, ptrs, name, args, stmt)
