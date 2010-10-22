@@ -157,14 +157,16 @@ for i = 2, #keywords do
 end
 keyword_pattern = keyword_pattern * #(1-(alpha+digit))
 
-local ident = action(alpha * (alpha + digit)^0, function(s, p, id)
+local raw_ident = alpha * (alpha + digit)^0
+
+local ident = action(raw_ident, function(s, p, id)
   if is_keyword[id] or typedefs[id] then
     return nil
   end
   return p, id
 end)
 
-local pos_ident = action(alpha * (alpha + digit)^0, function(s, p, id)
+local pos_ident = action(raw_ident, function(s, p, id)
   if is_keyword[id] or typedefs[id] then
     return nil
   end
@@ -172,7 +174,7 @@ local pos_ident = action(alpha * (alpha + digit)^0, function(s, p, id)
 end)
 
 
-local ident_or_type = action(alpha * (alpha + digit)^0, function(s, p, id)
+local ident_or_type = action(raw_ident, function(s, p, id)
   if is_keyword[id] then
     return nil
   end
@@ -180,7 +182,7 @@ local ident_or_type = action(alpha * (alpha + digit)^0, function(s, p, id)
 end)
 
 
-local type_name = action(alpha * (alpha + digit)^0, function(s, p, id)
+local type_name = action(raw_ident, function(s, p, id)
   if not is_keyword[id] and typedefs[id] then
     return p, id
   end
@@ -208,8 +210,8 @@ local float_constant =
   * (pattern "L" + pattern "l" + pattern "F" + pattern "f")^-1
 local constant = float_constant + integer_constant
 
-local attribute_arg = ident + string_literal + integer_constant
-local attribute = ident * (sp * pattern "(" * sp * attribute_arg *
+local attribute_arg = raw_ident + string_literal + integer_constant
+local attribute = raw_ident * (sp * pattern "(" * sp * attribute_arg *
   (sp * attribute_arg)^0 * sp * pattern ")")^-1
 local attributes = keyword "__attribute__" * action(sp * pattern "(" * sp *
   pattern "(" * sp * attribute * (sp * pattern "," * sp * attribute)^0 *
