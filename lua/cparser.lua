@@ -813,7 +813,8 @@ local grammar = pattern {
   variable_declaration = action(rule "storage_classifiers" *
     rule "type_prefix" * sp *
     rule "type_declarations_init" * sp * (attributes * sp) ^ 0 * pattern ";",
-      build_typed_declarations_init),
+      build_typed_declarations_init) +
+      keyword "__extension__" * sp * rule "variable_declaration",
   -- Expressions
   expression = 
     -- first alternative is an optimization
@@ -887,6 +888,7 @@ local grammar = pattern {
     pattern "(" * sp * rule "expression" * sp * pattern ")" +
     string_constant * value(new(ExprConstant))+
     char_literal * value(new(ExprConstant))+
+    keyword "__extension__" * sp * rule "primary_expression" +
     rule "vararg_expr",
   postfix =
     action(pattern "(" * sp * rule "actual_arguments" * sp * pattern ")",
@@ -1085,7 +1087,8 @@ local grammar = pattern {
 	end
 	--print_graph(funcdef.graph)
 	return pos
-      end),
+      end)+
+      keyword "__extension__" * sp * rule "function_definition",
   typedef_declaration =
     action(keyword "typedef" * sp * rule "type_prefix" * sp *
     rule "type_declarations" * sp * pattern ";",
