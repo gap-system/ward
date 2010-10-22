@@ -135,7 +135,7 @@ local keywords = {
   'static', '_Complex', 'default', 'inline', 'struct', '_Imaginary', 'do',
   'int', 'switch', 'double', 'long', 'typedef', 'else', 'register',
   'union', '__asm', '__asm__', '__thread', '__builtin_va_list', '__inline__',
-  '__builtin_va_arg', '__extension__', '__const',
+  '__builtin_va_arg', '__extension__', '__const', '__restrict',
 }
 
 local is_keyword = { }
@@ -744,6 +744,7 @@ local grammar = pattern {
   const_or_volatile_prefix = (keyword "const" * sp + keyword "volatile" * sp
     + keyword "__const" * sp),
   const_or_volatile = (rule "const_or_volatile_prefix")^0,
+  restrict = (keyword "restrict" + keyword "__restrict"),
   type_declaration =
     action(pattern "(" * sp * rule "type_declaration" * sp * pattern ")" *
       rule "type_postfix", build_type_postfix) +
@@ -753,14 +754,14 @@ local grammar = pattern {
         push(c, "*")
 	return p, c
       end) +
-    action(aggregate(pos_ident) * rule "type_postfix",
-      build_type_postfix)+
+    action((rule "restrict" * sp)^-1 * aggregate(pos_ident) *
+      rule "type_postfix", build_type_postfix)+
     action(rule "const_or_volatile_prefix" * rule "type_declaration",
       function(s, p, c)
         return p, c
       end)+
-    action(aggregate(value("")) * rule "type_postfix",
-      build_type_postfix),
+    action(aggregate(value("")) * (sp * rule "restrict")^-1 *
+      rule "type_postfix", build_type_postfix),
   opt_asm_declaration =
     (sp * (keyword "asm" + keyword "__asm__" + keyword "__asm") *
       pattern "(" * sp * string_constant * sp * pattern ")")^-1,
