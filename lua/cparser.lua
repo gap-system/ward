@@ -213,9 +213,9 @@ local constant = float_constant + integer_constant
 local attribute_arg = raw_ident + string_literal + integer_constant
 local attribute = raw_ident * (sp * pattern "(" * sp * attribute_arg *
   (sp * attribute_arg)^0 * sp * pattern ")")^-1
-local attributes = keyword "__attribute__" * action(sp * pattern "(" * sp *
+local attributes = (keyword "__attribute__" * action(sp * pattern "(" * sp *
   pattern "(" * sp * attribute * (sp * pattern "," * sp * attribute)^0 *
-  sp * pattern ")" * sp * pattern ")", discard)
+  sp * pattern ")" * sp * pattern ")", discard))^1
 
 local assignment_operator =
   capture(pattern "=" * #(1-pattern "=") +
