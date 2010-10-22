@@ -135,6 +135,7 @@ local keywords = {
   'static', '_Complex', 'default', 'inline', 'struct', '_Imaginary', 'do',
   'int', 'switch', 'double', 'long', 'typedef', 'else', 'register',
   'union', '__asm', '__asm__', '__thread', '__builtin_va_list', '__inline__',
+  '__builtin_va_arg',
 }
 
 local is_keyword = { }
@@ -885,7 +886,8 @@ local grammar = pattern {
     constant * value(new(ExprConstant))+
     pattern "(" * sp * rule "expression" * sp * pattern ")" +
     string_constant * value(new(ExprConstant))+
-    char_literal * value(new(ExprConstant)),
+    char_literal * value(new(ExprConstant))+
+    rule "vararg_expr",
   postfix =
     action(pattern "(" * sp * rule "actual_arguments" * sp * pattern ")",
       function(str, pos, arglist)
@@ -911,6 +913,12 @@ local grammar = pattern {
       function(str, pos)
         return pos, "x--", ""
       end),
+  vararg_expr = action(keyword "__builtin_va_arg" * sp * pattern "(" *
+    rule "expression" * sp * pattern "," * sp * rule "type_spec" * sp *
+    pattern ")", function(str, pos, expr, decl)
+      -- TODO: better approximation of this as *((type *)va)++?
+      return pos, new(ExprCast, pos, decl[2], new(ExprDeref, pos, expr))
+    end),
   actual_arguments = aggregate((rule "expression" *
     (sp * pattern "," * sp * rule "expression")^0)^-1),
 
