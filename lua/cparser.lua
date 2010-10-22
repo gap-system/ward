@@ -1095,7 +1095,8 @@ local grammar = pattern {
       keyword "__extension__" * sp * rule "function_definition",
   typedef_declaration =
     action(keyword "typedef" * sp * rule "type_prefix" * sp *
-    rule "type_declarations" * sp * pattern ";",
+    rule "type_declarations" * sp *
+    (attributes * sp)^-1 * pattern ";",
     function(str, pos, basetype, defs)
       for _, def in ipairs(defs) do
 	local name, typedef =
