@@ -1148,12 +1148,14 @@ local grammar = pattern {
     rule "function_definition"
 }
 
+local unterminated_line = (1 - range ("\r\r", "\n\n"))^0
+local eol = pattern "\n" + pattern "\r\n" + pattern "\r"
+local terminated_line = unterminated_line * eol
+local line_splitter =
+  aggregate(capture(terminated_line)^0 * capture(unterminated_line)^-1 * eof)
+
 function split_input_lines(input)
-  local result = { }
-  for line in string.gmatch(input.."\n", "([^\n]*\n)") do
-    push(result, line)
-  end
-  return result
+  return match(line_splitter, input)
 end
 
 function preprocess_input(input)
@@ -1182,12 +1184,7 @@ end
 
 function find_source_position(text, pos, mapping)
   local prefix = string.sub(text, 1, pos)
-  local lineno = 1
-  for line in string.gmatch(prefix, "\n") do
-    if string.match(line, "\n") then
-      lineno = lineno + 1
-    end
-  end
+  local lineno = #match(line_splitter, prefix)
   return mapping[lineno][1], mapping[lineno][2]
 end
 
@@ -1200,7 +1197,7 @@ function show_error(input, mapping, pos, message)
     print(string.format("%s:%d", sourcefile, sourceline))
   end
   pos = pos-1
-  for line in string.gmatch(input, "[^\r\n]*\r?\n?") do
+  for _, line in ipairs(split_input_lines(input)) do
     if #line < pos then
       pos = pos - #line
     else
