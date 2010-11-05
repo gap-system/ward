@@ -26,6 +26,9 @@ while i <= #arg do
       else
         system_error("The -pass option requires a numeric argument")
       end
+      if options.pass_count == 0 then
+        system_error("The number of passes must be at least 1")
+      end
     elseif file == "-errors" then
       options.report_type = "errors"
     elseif file == "-suggest" then

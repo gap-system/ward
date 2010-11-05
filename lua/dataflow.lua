@@ -306,11 +306,13 @@ function run_dataflow_analysis()
     dataflow_pass(funcdef)
   end
   pass1 = false
-  for _, funcdef in ipairs(all_functions) do
-    check_argument_accesses(funcdef)
-  end
-  for _, funcdef in ipairs(all_functions) do
-    dataflow_pass(funcdef)
+  for i = 2, options.pass_count do
+    for _, funcdef in ipairs(all_functions) do
+      check_argument_accesses(funcdef)
+    end
+    for _, funcdef in ipairs(all_functions) do
+      dataflow_pass(funcdef)
+    end
   end
   for _, funcdef in ipairs(entry_points) do
     checkerrors(funcdef)
