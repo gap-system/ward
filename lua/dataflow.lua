@@ -179,12 +179,13 @@ end
 local function make_unique(list)
   local mem = { }
   local p = 1
-  for i = 1, #list do
+  for i = 1, #list, 2 do
     local item = list[i]
     if not mem[item] then
       mem[item] = true
       list[p] = list[i]
-      p = p + 1
+      list[p+1] = list[i+1]
+      p = p + 2
     end
   end
   -- delete trailing entries
@@ -263,12 +264,14 @@ local function check_argument_accesses(funcdef)
   for i = 1, #nodes do
     local node = nodes[i]
     for arg, map in pairs(node.aain) do
-      for _, var in ipairs(node.writes) do
+      for j = 1, #node.writes, 2 do
+        local var = node.writes[j]
         if map[var] and not node.tlin[var] and not node.wpin[var] then
 	  writes[arg] = true
 	end
       end
-      for _, var in ipairs(node.reads) do
+      for j = 1, #node.reads, 2 do
+        local var = node.reads[j]
         if map[var] and not node.tlin[var] and not node.rpin[var] then
 	  reads[arg] = true
 	end
@@ -284,17 +287,19 @@ local function checkerrors(funcdef)
   local nodes = graph.nodes
   for i = 1, #nodes do
     local node = nodes[i]
-    for _, var in ipairs(node.writes) do
+    for j = 1, #node.writes, 2 do
+      local var = node.writes[j]
       if not node.wpin[var] and not node.tlin[var] then
         show_error(funcdef.source_file_input, funcdef.source_file_mapping,
-	  node.ast:position(), "Unprotected write of '"..
+	  node.writes[j+1], "Unprotected write of '"..
 	  node.local_vars[var][1] .."'")
       end
     end
-    for _, var in ipairs(node.reads) do
+    for j = 1, #node.reads, 2 do
+      local var = node.reads[j]
       if not node.rpin[var] and not node.tlin[var] then
         show_error(funcdef.source_file_input, funcdef.source_file_mapping,
-          node.ast:position(), "Unprotected read of '"..
+          node.reads[j+1], "Unprotected read of '"..
 	  node.local_vars[var][1] .."'")
       end
     end

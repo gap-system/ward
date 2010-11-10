@@ -203,9 +203,9 @@ function Expr:var_name()
   local children = self.children
   if children then
     for i = 1, #children do
-      local name = children[i]:var_name()
+      local name, pos = children[i]:var_name()
       if name then
-        return name
+        return name, pos
       end
     end
     return nil
@@ -254,11 +254,13 @@ function ExprCall:bag_access(read, write, realread, realwrite, deref_depth)
     local arg = args[i]
     arg:bag_access(realread, realwrite, realread, realwrite, 0)
     local bag = arg.type:bag()
-    local var = self.local_vars[arg:var_name()]
+    local name, pos = arg:var_name()
+    local var = self.local_vars[name]
     local func = self.func.name
     if var and bag and bag < 2 then
       if not func then
         push(realwrite, var)
+	push(realwrite, pos)
       else
         local funcdef = self.static_functions[func]
 	if not funcdef then
@@ -266,11 +268,14 @@ function ExprCall:bag_access(read, write, realread, realwrite, deref_depth)
 	end
 	if not funcdef or not funcdef.arg_writes then
 	  push(realwrite, var)
+	  push(realwrite, pos)
 	else
 	  if funcdef.arg_writes[var] then
 	    push(realwrite, var)
+	    push(realwrite, pos)
 	  elseif funcdef.arg_reads[var] then
 	    push(realread, var)
+	    push(realread, pos)
 	  end
 	end
       end
@@ -365,7 +370,7 @@ function ExprAssign:track_thread_locals(list)
       push(list, tvar)
     end
   end
-  Expr.track_thread_locals(self, list)
+  Expr.track_thread_locals(self, list) -- call to superclass
 end
 
 function ExprAssign:track_aliases_and_guards(aliases, guards)
@@ -497,7 +502,7 @@ function ExprVar:fix_types()
 end
 
 function ExprVar:var_name()
-  return self.name
+  return self.name, self.pos
 end
 
 function ExprVar:bag_access(read, write, realread, realwrite, deref_depth)
@@ -511,6 +516,7 @@ function ExprVar:bag_access(read, write, realread, realwrite, deref_depth)
     local index = self.local_vars[self.name]
     if index then
       push(read, index)
+      push(read, self.pos)
     end
   end
 end

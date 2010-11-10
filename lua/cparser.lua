@@ -539,7 +539,7 @@ local function build_compound_stmt(decls, stmts)
       add_local_var(name, type)
       if value then
 	local node = make_node(new(ExprAssign, pos, "=",
-	  new(ExprVar, pos, name), value))
+	  new(ExprVar, pos-#name, name), value))
 	push(decl_nodes, node)
       end
     end
@@ -887,7 +887,7 @@ local grammar = pattern {
       end),
   primary_expression =
     action(ident, function(str, pos, id)
-      return pos, new(ExprVar, pos, id)
+      return pos, new(ExprVar, pos-#id, id)
     end) +
     constant * value(new(ExprConstant))+
     pattern "(" * sp * rule "expression" * sp * pattern ")" +
@@ -1191,16 +1191,17 @@ end
 function show_error(input, mapping, pos, message)
   local sourcefile, sourceline =
     find_source_position(input, pos, mapping)
-  if message then
-    print(string.format("%s:%d:%s", sourcefile, sourceline, message))
-  else
-    print(string.format("%s:%d", sourcefile, sourceline))
-  end
   pos = pos-1
   for _, line in ipairs(split_input_lines(input)) do
     if #line < pos then
       pos = pos - #line
     else
+      if message then
+	print(string.format("%s:%d,%d:%s", sourcefile, sourceline, pos+1,
+	  message))
+      else
+	print(string.format("%s:%d,%d", sourcefile, sourceline, pos+1))
+      end
       line = string.gsub(line, "[\r\n]", "")
       print(line)
       if pos < 0 then
