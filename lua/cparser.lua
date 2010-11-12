@@ -1202,12 +1202,14 @@ function show_error(input, mapping, pos, message)
       else
 	print(string.format("%s:%d,%d", sourcefile, sourceline, pos+1))
       end
-      line = string.gsub(line, "[\r\n]", "")
-      print(line)
-      if pos < 0 then
-        pos = 0
+      if not options.unittest then
+	line = string.gsub(line, "[\r\n]", "")
+	print(line)
+	if pos < 0 then
+	  pos = 0
+	end
+	print(string.rep(" ", pos).."^")
       end
-      print(string.rep(" ", pos).."^")
       return
     end
   end

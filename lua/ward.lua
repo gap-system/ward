@@ -35,6 +35,8 @@ while i <= #arg do
       options.report_type = "suggestions"
     elseif file == "-parseonly" then
       options.parse_only = true
+    elseif file == "-unittest" then
+      options.unittest = true
     else
       system_error("Unknown option '" .. file .. "'")
     end
