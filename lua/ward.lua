@@ -15,10 +15,10 @@ options = {
 
 local i = 1
 while i <= #arg do
-  local file = arg[i]
+  local argument = arg[i]
   i = i + 1
-  if string.sub(file, 1, 1) == "-" then
-    if file == "-pass" then
+  if string.sub(argument, 1, 1) == "-" then
+    if argument == "-pass" then
       local pass_count = arg[i]
       i = i + 1
       if pass_count and lpeg.match(lpeg.R("09")^1*lpeg.P(-1), pass_count) then
@@ -29,16 +29,16 @@ while i <= #arg do
       if options.pass_count == 0 then
         system_error("The number of passes must be at least 1")
       end
-    elseif file == "-errors" then
+    elseif argument == "-errors" then
       options.report_type = "errors"
-    elseif file == "-suggest" then
+    elseif argument == "-suggest" then
       options.report_type = "suggestions"
-    elseif file == "-parseonly" then
+    elseif argument == "-parseonly" then
       options.parse_only = true
-    elseif file == "-unittest" then
+    elseif argument == "-unittest" then
       options.unittest = true
     else
-      system_error("Unknown option '" .. file .. "'")
+      system_error("Unknown option '" .. argument .. "'")
     end
   else
     local command = {"gcc", "-E"}
@@ -48,16 +48,16 @@ while i <= #arg do
     for name, value in pairs(preprocessor_defines) do
       push(command, "-D" .. name .. "=" .. value)
     end
-    push(command, file)
+    push(command, argument)
     local filecontents = read_from_command(command)
     if filecontents then
-      local success = parse(filecontents)
+      local success = parse(filecontents, argument)
       if not success then
         os.exit(1)
       end
       files_parsed = files_parsed + 1
     else
-      system_error("File "..file.." not found")
+      system_error("File "..argument.." not found")
     end
   end
 end
