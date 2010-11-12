@@ -257,6 +257,14 @@ local function dataflow_pass(funcdef)
     trans_aa, join_aa, standard_changed_from)
 end
 
+local function suggest(funcdef, node, mode, varname)
+  local sourcefile, sourceline =
+    find_source_position(funcdef.source_file_input, node.start_pos,
+      funcdef.source_file_mapping)
+  print(string.format("%s:%d:%s:%s", funcdef.filename,
+    sourceline, mode, varname))
+end
+
 local function add_guards(funcdef)
   local graph = funcdef.graph
   local nodes = graph.nodes
@@ -272,9 +280,11 @@ local function add_guards(funcdef)
     if funcdef.arg_writes[i] then
       push(start.sugg_wg, i)
       push(start.wg, i)
+      push(start.wpin, i)
     elseif funcdef.arg_reads[i] then
       push(start.sugg_rg, i)
       push(start.rg, i)
+      push(start.rpin, i)
     end
   end
 
@@ -292,9 +302,10 @@ local function add_guards(funcdef)
       for j = 1, #node.writes, 2 do
 	local var = node.writes[j]
 	if not node.wpin[var] and not node.tlin[var] then
-	  push(node.sugg_wg, var)
-	  push(node.wg, var)
-	  push(node.wpin, var)
+	  local insertion_point = node.insertion_point
+	  push(insertion_point.sugg_wg, var)
+	  push(insertion_point.wg, var)
+	  push(insertion_point.wpin, var)
 	  errors = true
 	  break
 	end
@@ -303,9 +314,10 @@ local function add_guards(funcdef)
       for j = 1, #node.reads, 2 do
 	local var = node.reads[j]
 	if not node.rpin[var] and not node.tlin[var] then
-	  push(node.sugg_rg, var)
-	  push(node.rg, var)
-	  push(node.rpin, var)
+	  local insertion_point = node.insertion_point
+	  push(insertion_point.sugg_rg, var)
+	  push(insertion_point.rg, var)
+	  push(insertion_point.rpin, var)
 	  errors = true
 	  break
 	end
@@ -313,6 +325,22 @@ local function add_guards(funcdef)
       if errors then break end
     end
   until not errors
+  for i = 1, #nodes do
+    local node = nodes[i]
+    local guarded = { }
+    for _, var in ipairs(node.sugg_wg) do
+      if not guarded[var] then
+        suggest(funcdef, node, "W", node.local_vars[var][1])
+	guarded[var] = true
+      end
+    end
+    for _, var in ipairs(node.sugg_rg) do
+      if not guarded[var] then
+        suggest(funcdef, node, "R", node.local_vars[var][1])
+	guarded[var] = true
+      end
+    end
+  end
 end
 
 local function check_argument_accesses(funcdef)

@@ -404,6 +404,7 @@ local function_exit
 local goto_statements, label_statements
 local push, pop = table.insert, table.remove
 local nodes
+local dependent_nodes
 
 local function add_local_var(name, type)
   push(local_variables, { name, type })
@@ -442,6 +443,7 @@ end
 local function make_node(ast)
   local node = new(Node, ast)
   push(nodes, node)
+  push(dependent_nodes, node)
   node.local_vars = local_variables
   node.static_vars = static_variables
   node.static_functions = static_functions
@@ -470,9 +472,9 @@ local build_function_names = { }
 
 local function build_stmt(ast)
   local func, start = unpack(ast)
-  local result = func(select(3, unpack(ast)))
-  result.start_pos = start
-  return result
+  local entry, exit = func(select(3, unpack(ast)))
+  entry.start_pos = start
+  return entry, exit
 end
 
 local function build_if_stmt(cond, then_part, else_part)
@@ -548,6 +550,7 @@ local function build_compound_stmt(decls, stmts)
       if value then
 	local node = make_node(new(ExprAssign, pos, "=",
 	  new(ExprVar, pos-#name, name), value))
+	node.insertion_point = node
 	push(decl_nodes, node)
       end
     end
@@ -556,12 +559,22 @@ local function build_compound_stmt(decls, stmts)
     connect(decl_nodes[i-1], decl_nodes[i])
   end
   if #stmts > 0 then
+    local save_dep = dependent_nodes
+    dependent_nodes = { }
     first, last = build_stmt(stmts[1])
+    for _, node in ipairs(dependent_nodes) do
+      node.insertion_point = first
+    end
     for i = 2, #stmts do
+      dependent_nodes = { }
       local a, b = build_stmt(stmts[i])
+      for _, node in ipairs(dependent_nodes) do
+	node.insertion_point = a
+      end
       connect(last, a)
       last = b
     end
+    dependent_nodes = save_dep
     if #decl_nodes > 0 then
       connect(decl_nodes[#decl_nodes], first)
       first = decl_nodes[1]
@@ -645,6 +658,7 @@ local function build_graph(args, stmt_tree)
   goto_statements = { }
   label_statements = { }
   local_variables = { }
+  dependent_nodes = { }
   nodes = { }
   for i = 1, #args do
     add_local_var(args[i][1], args[i][2])
