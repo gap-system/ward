@@ -170,7 +170,7 @@ local pos_ident = action(raw_ident, function(s, p, id)
   if is_keyword[id] or typedefs[id] then
     return nil
   end
-  return p, id, p
+  return p, id, p-#id
 end)
 
 
@@ -192,6 +192,13 @@ end)
 
 function keyword(k)
   return k * # (1-(alpha+digit))
+end
+
+function keyword_pos(k)
+  local len = #k
+  return action(keyword(k), function(str, pos)
+    return pos, pos-len
+  end)
 end
 
 local stringchar = (1-pattern("\\")) + (pattern("\\") * pattern(1))
@@ -462,9 +469,10 @@ end
 local build_function_names = { }
 
 local function build_stmt(ast)
-  local func = ast[1]
-  --print(build_function_names[func])
-  return func(select(2, unpack(ast)))
+  local func, start = unpack(ast)
+  local result = func(select(3, unpack(ast)))
+  result.start_pos = start
+  return result
 end
 
 local function build_if_stmt(cond, then_part, else_part)
@@ -930,26 +938,27 @@ local grammar = pattern {
     (sp * pattern "," * sp * rule "expression")^0)^-1),
 
   -- Statements
-  if_statement = action(keyword "if" * sp *
+  if_statement = action(keyword_pos "if" * sp *
     pattern "(" * sp * expression * sp * pattern ")" * sp *
     rule "statement" * (sp * keyword "else" * sp * rule "statement") ^ -1,
-    function (str, pos, cond, if_part, else_part)
-      return pos, { build_if_stmt, cond, if_part, else_part }
+    function (str, pos, start, cond, if_part, else_part)
+      return pos, { build_if_stmt, start, cond, if_part, else_part }
     end),
-  while_statement = action(keyword "while" * sp *
+  while_statement = action(keyword_pos "while" * sp *
     pattern "(" * sp * expression * sp * ")" * sp *
     rule "statement",
-    function(str, pos, cond, body)
-      return pos, { build_while_stmt, cond, body }
+    function(str, pos, start, cond, body)
+      return pos, { build_while_stmt, start, cond, body }
     end),
-  do_statement = action(keyword "do" * sp * rule "statement" * sp *
+  do_statement = action(keyword_pos "do" * sp * rule "statement" * sp *
     keyword "while" * sp * pattern "(" * sp * expression * sp * ")" *
     sp * pattern ";",
-    function (str, pos, body, cond)
-      return pos, { build_do_stmt, body, cond }
+    function (str, pos, start, body, cond)
+      return pos, { build_do_stmt, start, body, cond }
     end),
-  compound_statement = action(pattern "{" * sp *
-    aggregate(action(rule "variable_declaration" * sp,
+  compound_statement = action(action(pattern "{", function(str, pos)
+      return pos, pos-1
+    end) * sp * aggregate(action(rule "variable_declaration" * sp,
       function(str, pos, declarations)
         local local_declarations = { }
         for _, declaration in ipairs(declarations) do
@@ -981,60 +990,60 @@ local grammar = pattern {
       end) ^ 0) *
     aggregate((rule "statement" * sp) ^ 0) *
     pattern "}",
-    function(str, pos, decls, stmts)
-      return pos, { build_compound_stmt, decls, stmts }
+    function(str, pos, start, decls, stmts)
+      return pos, { build_compound_stmt, start, decls, stmts }
     end),
-  for_statement = action(keyword "for" * sp * pattern "(" * sp *
+  for_statement = action(keyword_pos "for" * sp * pattern "(" * sp *
     ((expression + value(nil)) * sp) * pattern ";" * sp *
     ((expression + value(nil)) * sp) * pattern ";" * sp *
     ((expression + value(nil)) * sp) * pattern ")" * sp *
     rule "statement",
-    function (str, pos, init, cond, step, body)
-      return pos, { build_for_stmt, init, cond, step, body }
+    function (str, pos, start, init, cond, step, body)
+      return pos, { build_for_stmt, start, init, cond, step, body }
     end),
-  switch_statement = action(keyword "switch" * sp *
+  switch_statement = action(keyword_pos "switch" * sp *
     pattern "(" * sp * expression * sp * pattern ")" * sp * rule "statement",
-    function (str, pos, expr, body)
-      return pos, { build_switch_stmt, expr, body }
+    function (str, pos, start, expr, body)
+      return pos, { build_switch_stmt, start, expr, body }
     end),
-  label_statement = action(keyword "case" * sp * expression * ":",
-      function(str, pos, expr)
-        return pos, { build_case_stmt, expr }
+  label_statement = action(keyword_pos "case" * sp * expression * ":",
+      function(str, pos, start, expr)
+        return pos, { build_case_stmt, start, expr }
       end)+
-    action(keyword "default" * sp * ":",
-      function(str, pos, expr)
-        return pos, { build_case_stmt, nil }
+    action(keyword_pos "default" * sp * ":",
+      function(str, pos, start)
+        return pos, { build_case_stmt, start, nil }
       end)+
-    action(ident * sp * ":",
-      function(str, pos, id)
-        return pos, { build_label_stmt, id }
+    action(pos_ident * sp * ":",
+      function(str, pos, id, start)
+        return pos, { build_label_stmt, start, id }
       end),
-  jump_statement = action(keyword "goto" * sp  * ident,
-      function(str, pos, id)
-        return pos, { build_goto_stmt, id }
+  jump_statement = action(keyword_pos "goto" * sp  * ident,
+      function(str, pos, start, id)
+        return pos, { build_goto_stmt, start, id }
       end)+
-    action(keyword "continue",
-      function(str, pos)
-	return pos, { build_continue_stmt }
+    action(keyword_pos "continue",
+      function(str, pos, start)
+	return pos, { build_continue_stmt, start }
       end)+
-    action(keyword "break",
-      function(str, pos)
-	return pos, { build_break_stmt }
+    action(keyword_pos "break",
+      function(str, pos, start)
+	return pos, { build_break_stmt, start }
       end)+
-    action(keyword "return" * sp * expression,
-      function(str, pos, expr)
-        return pos, { build_return_stmt, expr }
+    action(keyword_pos "return" * sp * expression,
+      function(str, pos, start, expr)
+        return pos, { build_return_stmt, start, expr }
       end)+
-    action(keyword "return",
-      function(str, pos)
-	return pos, { build_return_stmt }
+    action(keyword_pos "return",
+      function(str, pos, start)
+	return pos, { build_return_stmt, start }
       end),
   asm_register = string_literal * sp * pattern "(" * sp *
     rule "expression" * sp * ")",
   asm_registers = sp * (rule "asm_register" * sp)^0,
   opt_asm_args = pattern ":" * rule "asm_registers" * (pattern ":" *
     rule "asm_registers" * (pattern ":" * (sp * string_constant)^-1)^-1)^-1,
-  asm_statement = (keyword "asm" + keyword "__asm__" + keyword "__asm") *
+  asm_statement = (keyword_pos "asm" + keyword "__asm__" + keyword "__asm") *
     sp * pattern "(" * sp * string_constant * sp * (rule "opt_asm_args" * sp) *
     pattern ")",
   statement = rule "if_statement" +
@@ -1045,16 +1054,16 @@ local grammar = pattern {
     rule "jump_statement" * sp * pattern ";" +
     rule "label_statement" +
     rule "compound_statement" +
-    action(expression * sp * pattern ";",
-      function(str, pos, expr)
-        return pos, { build_expr_stmt, expr }
+    action(position() * expression * sp * pattern ";",
+      function(str, pos, start, expr)
+        return pos, { build_expr_stmt, start, expr }
       end)+
     action(pattern ";", function(str, pos)
-      return pos, { build_empty_stmt }
+      return pos, { build_empty_stmt, pos-1 }
     end)+
     action(rule "asm_statement",
-      function(str, pos)
-        return pos, { build_asm_stmt }
+      function(str, pos, start)
+        return pos, { build_asm_stmt, start }
       end),
 
     -- Toplevel
