@@ -968,6 +968,7 @@ local grammar = pattern {
 	    local funcdef = storage
 	    funcdef.type = type.result_type
 	    funcdef.name = name
+	    funcdef.filename = source_file_name
 	    funcdef.graph = nil
 	    if storage.static then
 	      if not static_functions[name] then
@@ -1089,6 +1090,7 @@ local grammar = pattern {
 	end
 	funcdef.type = basetype
 	funcdef.name = name
+	funcdef.filename = source_file_name
 	funcdef.args = args
 	funcdef.graph = build_graph(args, stmt)
 	funcdef.source_file_input = source_file_input
@@ -1126,6 +1128,7 @@ local grammar = pattern {
 	    local funcdef = storage
 	    funcdef.type = type.result_type
 	    funcdef.name = name
+	    funcdef.filename = source_file_name
 	    funcdef.graph = nil
 	    if storage.static then
 	      if not static_functions[name] then
@@ -1224,11 +1227,12 @@ function show_error(input, mapping, pos, message)
   end
 end
 
-function parse(input)
+function parse(input, filename)
   local success, pos, mapping
   input, mapping = preprocess_input(input)
   source_file_input = input
   source_file_mapping = mapping
+  source_file_name = filename
   static_variables = { }
   static_functions = { }
   typedefs = { }

@@ -79,7 +79,8 @@ local function trans_rp(input, node)
   for i = 1, #wg do
     input[wg[i]] = true
   end
-  return assignments(input, node)
+  local r = assignments(input, node)
+  return r
 end
 
 local function trans_wp(input, node)
@@ -256,6 +257,64 @@ local function dataflow_pass(funcdef)
     trans_aa, join_aa, standard_changed_from)
 end
 
+local function add_guards(funcdef)
+  local graph = funcdef.graph
+  local nodes = graph.nodes
+  local start = graph.start
+  for i = 1, #nodes do
+    local node = nodes[i]
+    init_properties(node)
+    node.sugg_wg = { }
+    node.sugg_rg = { }
+  end
+  local aa = { }
+  for i = 1, #funcdef.args do
+    if funcdef.arg_writes[i] then
+      push(start.sugg_wg, i)
+      push(start.wg, i)
+    elseif funcdef.arg_reads[i] then
+      push(start.sugg_rg, i)
+      push(start.rg, i)
+    end
+  end
+
+  local errors
+  repeat
+    errors = false
+    forward_dataflow(graph, "wpin", "wpout",
+      trans_wp, intersection, standard_changed_from)
+    forward_dataflow(graph, "rpin", "rpout",
+      trans_rp, intersection, standard_changed_from)
+    forward_dataflow(graph, "tlin", "tlout",
+      trans_tl, intersection, standard_changed_from)
+    for i = 1, #nodes do
+      local node = nodes[i]
+      for j = 1, #node.writes, 2 do
+	local var = node.writes[j]
+	if not node.wpin[var] and not node.tlin[var] then
+	  push(node.sugg_wg, var)
+	  push(node.wg, var)
+	  push(node.wpin, var)
+	  errors = true
+	  break
+	end
+      end
+      if errors then break end
+      for j = 1, #node.reads, 2 do
+	local var = node.reads[j]
+	if not node.rpin[var] and not node.tlin[var] then
+	  push(node.sugg_rg, var)
+	  push(node.rg, var)
+	  push(node.rpin, var)
+	  errors = true
+	  break
+	end
+      end
+      if errors then break end
+    end
+  until not errors
+end
+
 local function check_argument_accesses(funcdef)
   local graph = funcdef.graph
   local nodes = graph.nodes
@@ -319,8 +378,16 @@ function run_dataflow_analysis()
       dataflow_pass(funcdef)
     end
   end
-  for _, funcdef in ipairs(entry_points) do
-    checkerrors(funcdef)
+  if options.report_type == "errors" then
+    for _, funcdef in ipairs(entry_points) do
+      checkerrors(funcdef)
+    end
+  elseif options.report_type == "suggestions" then
+     for _, funcdef in ipairs(all_functions) do
+       add_guards(funcdef)
+     end
+  else
+    system_error("Unknown report type")
   end
 end
 
