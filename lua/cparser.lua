@@ -535,9 +535,9 @@ end
 
 local function build_compound_stmt(decls, stmts)
   local first, last
+  local head_node = make_node()
   if #stmts == 0 and #decls == 0 then
-    local node = make_node()
-    return node, node
+    return head_node, head_node
   end
   local save_vars = nil
   if #decls then
@@ -592,7 +592,8 @@ local function build_compound_stmt(decls, stmts)
   if save_vars then
     local_variables = save_vars
   end
-  return first, last
+  connect(head_node, first)
+  return head_node, last
 end
 
 local function build_switch_stmt(expr, body)
