@@ -73,11 +73,23 @@ end
 local function trans_rp(input, node)
   local rg = node.rg
   local wg = node.wg
+  local rg2 = node.add_rg
+  local wg2 = node.add_wg
   for i = 1, #rg do
     input[rg[i]] = true
   end
   for i = 1, #wg do
     input[wg[i]] = true
+  end
+  if rg2 then
+    for i = 1, #rg2 do
+      input[rg2[i]] = true
+    end
+  end
+  if wg2 then
+    for i = 1, #wg2 do
+      input[wg2[i]] = true
+    end
   end
   local r = assignments(input, node)
   return r
@@ -85,8 +97,14 @@ end
 
 local function trans_wp(input, node)
   local wg = node.wg
+  local wg2 = node.add_wg
   for i = 1, #wg do
     input[wg[i]] = true
+  end
+  if wg2 then
+    for i = 1, #wg2 do
+      input[wg2[i]] = true
+    end
   end
   return assignments(input, node)
 end
@@ -280,17 +298,17 @@ local function add_guards(funcdef)
   for i = 1, #nodes do
     local node = nodes[i]
     init_properties(node)
-    node.sugg_wg = { }
-    node.sugg_rg = { }
+    node.add_wg = { }
+    node.add_rg = { }
   end
   local aa = { }
   for i = 1, #funcdef.args do
     if funcdef.arg_writes[i] then
-      push(start.sugg_wg, i)
+      push(start.add_wg, i)
       push(start.wg, i)
       push(start.wpin, i)
     elseif funcdef.arg_reads[i] then
-      push(start.sugg_rg, i)
+      push(start.add_rg, i)
       push(start.rg, i)
       push(start.rpin, i)
     end
@@ -311,7 +329,7 @@ local function add_guards(funcdef)
 	local var = node.writes[j]
 	if not node.wpin[var] and not node.tlin[var] then
 	  local insertion_point = node.insertion_point
-	  push(node.sugg_wg, var)
+	  push(node.add_wg, var)
 	  push(node.wpin, var)
 	  errors = true
 	  break
@@ -322,7 +340,7 @@ local function add_guards(funcdef)
 	local var = node.reads[j]
 	if not node.rpin[var] and not node.tlin[var] then
 	  local insertion_point = node.insertion_point
-	  push(node.sugg_rg, var)
+	  push(node.add_rg, var)
 	  push(node.rpin, var)
 	  errors = true
 	  break
@@ -334,13 +352,13 @@ local function add_guards(funcdef)
   for i = 1, #nodes do
     local node = nodes[i]
     local guarded = { }
-    for _, var in ipairs(node.sugg_wg) do
+    for _, var in ipairs(node.add_wg) do
       if not guarded[var] then
         suggest(funcdef, node, "W", node.local_vars[var][1])
 	guarded[var] = true
       end
     end
-    for _, var in ipairs(node.sugg_rg) do
+    for _, var in ipairs(node.add_rg) do
       if not guarded[var] then
         suggest(funcdef, node, "R", node.local_vars[var][1])
 	guarded[var] = true
