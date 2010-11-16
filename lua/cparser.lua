@@ -471,9 +471,10 @@ end
 local build_function_names = { }
 
 local function build_stmt(ast)
-  local func, start = unpack(ast)
-  local entry, exit = func(select(3, unpack(ast)))
+  local func, start, finish = unpack(ast)
+  local entry, exit = func(select(4, unpack(ast)))
   entry.start_pos = start
+  entry.finish_pos = finish
   return entry, exit
 end
 
@@ -954,21 +955,26 @@ local grammar = pattern {
   -- Statements
   if_statement = action(keyword_pos "if" * sp *
     pattern "(" * sp * expression * sp * pattern ")" * sp *
-    rule "statement" * (sp * keyword "else" * sp * rule "statement") ^ -1,
-    function (str, pos, start, cond, if_part, else_part)
-      return pos, { build_if_stmt, start, cond, if_part, else_part }
+    rule "statement" * (sp * keyword "else" * sp * rule "statement") ^ -1 *
+    position(),
+    function (str, pos, start, cond, if_part, else_part, finish)
+      if finish then
+        return pos, { build_if_stmt, start, finish, cond, if_part, else_part }
+      else
+        return pos, { build_if_stmt, start, else_part, cond, if_part }
+      end
     end),
   while_statement = action(keyword_pos "while" * sp *
     pattern "(" * sp * expression * sp * ")" * sp *
-    rule "statement",
-    function(str, pos, start, cond, body)
-      return pos, { build_while_stmt, start, cond, body }
+    rule "statement" * position(),
+    function(str, pos, start, cond, body, finish)
+      return pos, { build_while_stmt, start, finish, cond, body }
     end),
   do_statement = action(keyword_pos "do" * sp * rule "statement" * sp *
     keyword "while" * sp * pattern "(" * sp * expression * sp * ")" *
-    sp * pattern ";",
-    function (str, pos, start, body, cond)
-      return pos, { build_do_stmt, start, body, cond }
+    sp * pattern ";" * position(),
+    function (str, pos, start, body, cond, finish)
+      return pos, { build_do_stmt, start, finish, body, cond }
     end),
   compound_statement = action(action(pattern "{", function(str, pos)
       return pos, pos-1
@@ -1004,54 +1010,56 @@ local grammar = pattern {
 	return pos, local_declarations
       end) ^ 0) *
     aggregate((rule "statement" * sp) ^ 0) *
-    pattern "}",
-    function(str, pos, start, decls, stmts)
-      return pos, { build_compound_stmt, start, decls, stmts }
+    pattern "}" * position(),
+    function(str, pos, start, decls, stmts, finish)
+      return pos, { build_compound_stmt, start, finish, decls, stmts }
     end),
   for_statement = action(keyword_pos "for" * sp * pattern "(" * sp *
     ((expression + value(nil)) * sp) * pattern ";" * sp *
     ((expression + value(nil)) * sp) * pattern ";" * sp *
     ((expression + value(nil)) * sp) * pattern ")" * sp *
-    rule "statement",
-    function (str, pos, start, init, cond, step, body)
-      return pos, { build_for_stmt, start, init, cond, step, body }
+    rule "statement" * position(),
+    function (str, pos, start, init, cond, step, body, finish)
+      return pos, { build_for_stmt, start, finish, init, cond, step, body }
     end),
   switch_statement = action(keyword_pos "switch" * sp *
-    pattern "(" * sp * expression * sp * pattern ")" * sp * rule "statement",
-    function (str, pos, start, expr, body)
-      return pos, { build_switch_stmt, start, expr, body }
+    pattern "(" * sp * expression * sp * pattern ")" * sp * rule "statement" *
+    position(),
+    function (str, pos, start, expr, body, finish)
+      return pos, { build_switch_stmt, start, finish, expr, body }
     end),
-  label_statement = action(keyword_pos "case" * sp * expression * ":",
-      function(str, pos, start, expr)
-        return pos, { build_case_stmt, start, expr }
+  label_statement = action(keyword_pos "case" * sp * expression * ":" *
+      position(),
+      function(str, pos, start, expr, finish)
+        return pos, { build_case_stmt, start, finish, expr }
       end)+
-    action(keyword_pos "default" * sp * ":",
-      function(str, pos, start)
-        return pos, { build_case_stmt, start, nil }
+    action(keyword_pos "default" * sp * ":" * position(),
+      function(str, pos, start, finish)
+        return pos, { build_case_stmt, start, finish, nil }
       end)+
-    action(pos_ident * sp * ":",
-      function(str, pos, id, start)
-        return pos, { build_label_stmt, start, id }
+    action(pos_ident * sp * ":" * position(),
+      function(str, pos, id, start, finish)
+        return pos, { build_label_stmt, start, finish, id }
       end),
-  jump_statement = action(keyword_pos "goto" * sp  * ident,
-      function(str, pos, start, id)
-        return pos, { build_goto_stmt, start, id }
+  jump_statement = action(keyword_pos "goto" * sp  * ident * position(),
+      function(str, pos, start, id, finish)
+        return pos, { build_goto_stmt, start, finish, id }
       end)+
-    action(keyword_pos "continue",
-      function(str, pos, start)
-	return pos, { build_continue_stmt, start }
+    action(keyword_pos "continue" * position(),
+      function(str, pos, start, finish)
+	return pos, { build_continue_stmt, start, finish }
       end)+
-    action(keyword_pos "break",
-      function(str, pos, start)
-	return pos, { build_break_stmt, start }
+    action(keyword_pos "break" * position(),
+      function(str, pos, start, finish)
+	return pos, { build_break_stmt, start, finish }
       end)+
-    action(keyword_pos "return" * sp * expression,
-      function(str, pos, start, expr)
-        return pos, { build_return_stmt, start, expr }
+    action(keyword_pos "return" * sp * expression * position(),
+      function(str, pos, start, expr, finish)
+        return pos, { build_return_stmt, start, finish, expr }
       end)+
-    action(keyword_pos "return",
-      function(str, pos, start)
-	return pos, { build_return_stmt, start }
+    action(keyword_pos "return" * position(),
+      function(str, pos, start, finish)
+	return pos, { build_return_stmt, start, finish }
       end),
   asm_register = string_literal * sp * pattern "(" * sp *
     rule "expression" * sp * ")",
@@ -1060,7 +1068,7 @@ local grammar = pattern {
     rule "asm_registers" * (pattern ":" * (sp * string_constant)^-1)^-1)^-1,
   asm_statement = (keyword_pos "asm" + keyword "__asm__" + keyword "__asm") *
     sp * pattern "(" * sp * string_constant * sp * (rule "opt_asm_args" * sp) *
-    pattern ")",
+    pattern ")" * position(),
   statement = rule "if_statement" +
     rule "while_statement" +
     rule "do_statement" +
@@ -1069,16 +1077,16 @@ local grammar = pattern {
     rule "jump_statement" * sp * pattern ";" +
     rule "label_statement" +
     rule "compound_statement" +
-    action(position() * expression * sp * pattern ";",
-      function(str, pos, start, expr)
-        return pos, { build_expr_stmt, start, expr }
+    action(position() * expression * sp * pattern ";" * position(),
+      function(str, pos, start, expr, finish)
+        return pos, { build_expr_stmt, start, finish, expr }
       end)+
     action(pattern ";", function(str, pos)
-      return pos, { build_empty_stmt, pos-1 }
+      return pos, { build_empty_stmt, pos-1, pos }
     end)+
     action(rule "asm_statement",
-      function(str, pos, start)
-        return pos, { build_asm_stmt, start }
+      function(str, pos, start, finish)
+        return pos, { build_asm_stmt, start, finish }
       end),
 
     -- Toplevel
@@ -1210,34 +1218,30 @@ end
 
 function find_source_position(text, pos, mapping)
   local prefix = string.sub(text, 1, pos)
-  local lineno = #match(line_splitter, prefix)
-  return mapping[lineno][1], mapping[lineno][2]
+  local lines = split_input_lines(prefix)
+  local all_lines = split_input_lines(text)
+  local lineno = #lines
+  local colno = #lines[#lines]
+  if colno == 0 then
+    colno = #lines[#lines-1]
+    lineno = lineno-1
+  end
+  return mapping[lineno][1], mapping[lineno][2], colno, all_lines[lineno]
 end
 
 function show_error(input, mapping, pos, message)
-  local sourcefile, sourceline =
+  local sourcefile, sourceline, sourcecol, line =
     find_source_position(input, pos, mapping)
-  pos = pos-1
-  for _, line in ipairs(split_input_lines(input)) do
-    if #line < pos then
-      pos = pos - #line
-    else
-      if message then
-	print(string.format("%s:%d,%d:%s", sourcefile, sourceline, pos+1,
-	  message))
-      else
-	print(string.format("%s:%d,%d", sourcefile, sourceline, pos+1))
-      end
-      if not options.unittest then
-	line = string.gsub(line, "[\r\n]", "")
-	print(line)
-	if pos < 0 then
-	  pos = 0
-	end
-	print(string.rep(" ", pos).."^")
-      end
-      return
-    end
+  if message then
+    print(string.format("%s:%d,%d:%s", sourcefile, sourceline, sourcecol,
+      message))
+  else
+    print(string.format("%s:%d,%d", sourcefile, sourceline, sourcecol))
+  end
+  if not options.unittest then
+    line = string.gsub(line, "[\r\n]", "")
+    print(line)
+    print(string.rep(" ", sourcecol-1).."^")
   end
 end
 

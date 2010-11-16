@@ -261,8 +261,16 @@ local function suggest(funcdef, node, mode, varname)
   local sourcefile, sourceline =
     find_source_position(funcdef.source_file_input, node.start_pos,
       funcdef.source_file_mapping)
-  print(string.format("%s:%d:%s:%s", funcdef.filename,
-    sourceline, mode, varname))
+  if node.insertion_point == node then
+    print(string.format("%s:%d:%s:%s", sourcefile,
+      sourceline, mode, varname))
+  else
+    local _, finish_line =
+      find_source_position(funcdef.source_file_input, node.finish_pos,
+        funcdef.source_file_mapping)
+    print(string.format("%s:%d-%d:%s:%s", sourcefile,
+      sourceline, finish_line, mode, varname))
+  end
 end
 
 local function add_guards(funcdef)
@@ -303,9 +311,8 @@ local function add_guards(funcdef)
 	local var = node.writes[j]
 	if not node.wpin[var] and not node.tlin[var] then
 	  local insertion_point = node.insertion_point
-	  push(insertion_point.sugg_wg, var)
-	  push(insertion_point.wg, var)
-	  push(insertion_point.wpin, var)
+	  push(node.sugg_wg, var)
+	  push(node.wpin, var)
 	  errors = true
 	  break
 	end
@@ -315,9 +322,8 @@ local function add_guards(funcdef)
 	local var = node.reads[j]
 	if not node.rpin[var] and not node.tlin[var] then
 	  local insertion_point = node.insertion_point
-	  push(insertion_point.sugg_rg, var)
-	  push(insertion_point.rg, var)
-	  push(insertion_point.rpin, var)
+	  push(node.sugg_rg, var)
+	  push(node.rpin, var)
 	  errors = true
 	  break
 	end

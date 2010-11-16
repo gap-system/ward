@@ -1,4 +1,5 @@
-#!/usr/bin/env lua
+#!/Users/behrends/develop/ward/bin/lua
+package.path = [[/Users/behrends/develop/ward/share/lua/5.1//?.lua;/Users/behrends/develop/ward/share/lua/5.1//?/init.lua;]]..package.path
 
 local command_line = require("luarocks.command_line")
 
