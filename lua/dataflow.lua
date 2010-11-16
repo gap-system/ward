@@ -330,7 +330,7 @@ local function add_guards(funcdef)
 	if not node.wpin[var] and not node.tlin[var] then
 	  local insertion_point = node.insertion_point
 	  push(node.add_wg, var)
-	  push(node.wpin, var)
+	  node.wpin[var] = true
 	  errors = true
 	  break
 	end
@@ -341,7 +341,7 @@ local function add_guards(funcdef)
 	if not node.rpin[var] and not node.tlin[var] then
 	  local insertion_point = node.insertion_point
 	  push(node.add_rg, var)
-	  push(node.rpin, var)
+	  node.rpin[var] = true
 	  errors = true
 	  break
 	end
