@@ -11,6 +11,7 @@ options = {
   report_type = "errors",
   pass_count = 2,
   parse_only = false,
+  verbose = true,
 }
 
 local i = 1
@@ -35,8 +36,10 @@ while i <= #arg do
       options.report_type = "suggestions"
     elseif argument == "-parseonly" then
       options.parse_only = true
-    elseif argument == "-unittest" then
-      options.unittest = true
+    elseif argument == "-verbose" then
+      options.verbose = true
+    elseif argument == "-terse" then
+      options.verbose = false
     else
       system_error("Unknown option '" .. argument .. "'")
     end

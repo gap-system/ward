@@ -1239,7 +1239,7 @@ function show_error(input, mapping, pos, message)
   else
     print(string.format("%s:%d,%d", sourcefile, sourceline, sourcecol))
   end
-  if not options.unittest then
+  if options.verbose then
     line = string.gsub(line, "[\r\n]", "")
     print(line)
     print(string.rep(" ", sourcecol-1).."^")
