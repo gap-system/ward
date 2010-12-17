@@ -266,16 +266,18 @@ function ExprCall:bag_access(read, write, realread, realwrite, deref_depth)
 	if not funcdef then
 	  funcdef = global_functions[func]
 	end
-	if not funcdef or not funcdef.arg_writes then
-	  push(realwrite, var)
-	  push(realwrite, pos)
-	else
-	  if funcdef.arg_writes[var] then
+	if not ReadGuards[func] and not WriteGuards[func] then
+	  if not funcdef or not funcdef.arg_writes then
 	    push(realwrite, var)
 	    push(realwrite, pos)
-	  elseif funcdef.arg_reads[var] then
-	    push(realread, var)
-	    push(realread, pos)
+	  else
+	    if funcdef.arg_writes[var] then
+	      push(realwrite, var)
+	      push(realwrite, pos)
+	    elseif funcdef.arg_reads[var] then
+	      push(realread, var)
+	      push(realread, pos)
+	    end
 	  end
 	end
       end
