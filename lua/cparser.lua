@@ -1188,6 +1188,7 @@ local eol = pattern "\n" + pattern "\r\n" + pattern "\r"
 local terminated_line = unterminated_line * eol
 local line_splitter =
   aggregate(capture(terminated_line)^0 * capture(unterminated_line)^-1 * eof)
+local spaces_only = space ^ 0 * eof
 
 function split_input_lines(input)
   return match(line_splitter, input)
@@ -1215,6 +1216,15 @@ function preprocess_input(input)
   end
   push(mapping, { currentfile, currentline+1 })
   return table.concat(lines, ""), mapping
+end
+
+function is_line_start(text, pos)
+  local lines = split_input_lines(text)
+  if match(spaces_only, lines[#lines]) then
+    return true
+  else
+    return false
+  end
 end
 
 function find_source_position(text, pos, mapping)

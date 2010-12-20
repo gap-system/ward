@@ -279,13 +279,16 @@ local function suggest(funcdef, node, mode, varname)
   local sourcefile, sourceline =
     find_source_position(funcdef.source_file_input, node.start_pos,
       funcdef.source_file_mapping)
-  if node.insertion_point == node then
+  local is_start = is_line_start(funcdef.source_file_input, node.start_pos)
+  if node.insertion_point == node and is_start then
+    -- prefix guard
     print(string.format("%s:%d:%s:%s", sourcefile,
       sourceline, mode, varname))
   else
     local _, finish_line =
       find_source_position(funcdef.source_file_input, node.finish_pos,
         funcdef.source_file_mapping)
+    -- inline guard
     print(string.format("%s:%d-%d:%s:%s", sourcefile,
       sourceline, finish_line, mode, varname))
   end
