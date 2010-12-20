@@ -1219,7 +1219,10 @@ function preprocess_input(input)
 end
 
 function is_line_start(text, pos)
-  local lines = split_input_lines(text)
+  if not pos then
+    return false
+  end
+  local lines = split_input_lines(string.sub(text,1,pos-1))
   if match(spaces_only, lines[#lines]) then
     return true
   else

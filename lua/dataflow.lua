@@ -356,13 +356,13 @@ local function add_guards(funcdef)
     local node = nodes[i]
     local guarded = { }
     for _, var in ipairs(node.add_wg) do
-      if not guarded[var] then
+      if not guarded[var] and node.local_vars[var][2]:bag()==0 then
         suggest(funcdef, node, "W", node.local_vars[var][1])
 	guarded[var] = true
       end
     end
     for _, var in ipairs(node.add_rg) do
-      if not guarded[var] then
+      if not guarded[var] and node.local_vars[var][2]:bag()==0 then
         suggest(funcdef, node, "R", node.local_vars[var][1])
 	guarded[var] = true
       end
