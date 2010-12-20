@@ -1,0 +1,5 @@
+#!/bin/sh
+PREFIX=`dirname $0`
+for f in "$@"; do
+  $PREFIX/ward -suggest $f
+done
