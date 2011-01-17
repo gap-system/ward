@@ -43,4 +43,11 @@ export LUA_PATH='$LUA_ROOT/lua/?.lua;$LUA_PATH'
 "$LUA_ROOT/bin/lua" "$LUA_ROOT/lua/addguards.lua" "\$@"
 EOF
 chmod 755 bin/addguards
+cat >bin/addguards2 <<EOF
+#!/bin/sh
+export LUA_PATH='$LUA_ROOT/lua/?.lua;$LUA_PATH'
+export WARD=$LUA_ROOT
+"$LUA_ROOT/bin/lua" "$LUA_ROOT/lua/addguards2.lua" "\$@"
+EOF
+chmod 755 bin/addguards2
 chmod 755 bin/findguards
