@@ -15,6 +15,7 @@ ReadGuards = {
 preprocessor_defines = {
   HAVE_NATIVE_TLS = 1,
   CONFIG_H = 1,
+  WARD_ENABLED = 1,
 }
 
 preprocessor_options = {
