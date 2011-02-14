@@ -21,8 +21,8 @@ export PATH=$LUA_ROOT/bin:$PATH
 cd $LUA_ROOT/ext/luarocks-2.0.2
 ./configure
 make install
-cd $LUA_ROOT/ext/lpeg-list
-make && cp listlpeg.so $LUA_ROOT/lib/lua/5.1
+cd $LUA_ROOT/ext/lpeg
+luarocks make lpeg-local-1.rockspec && cp lpeg.so $LUA_ROOT/lib/lua/5.1
 cd $LUA_ROOT
 LUA_PATH=`bin/lua -e 'print(package.path)'`
 cat >bin/ward <<EOF
