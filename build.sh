@@ -34,7 +34,7 @@ chmod 755 bin/ward
 cat >bin/cward <<EOF
 #!/bin/sh
 export LUA_PATH='$LUA_ROOT/lua/?.lua;$LUA_PATH'
-"$LUA_ROOT/bin/luajit2" "$LUA_ROOT/lua/ward.lua" "\$@"
+"$LUA_ROOT/bin/luajit2" -joff "$LUA_ROOT/lua/ward.lua" "\$@"
 EOF
 chmod 755 bin/cward
 cat >bin/addguards <<EOF
