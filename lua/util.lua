@@ -124,6 +124,10 @@ function chmod(mode, file)
   run_command({"chmod", mode, file})
 end
 
+function printerr(...)
+  io.stderr:write(table.concat({...}, "\t").."\n")
+end
+
 local old_os_exit = os.exit
 local exit_functions = { }
 

@@ -276,6 +276,9 @@ local function dataflow_pass(funcdef)
 end
 
 local function suggest(funcdef, node, mode, varname)
+  if not node.start_pos then
+    return
+  end
   local sourcefile, sourceline =
     find_source_position(funcdef.source_file_input, node.start_pos,
       funcdef.source_file_mapping)

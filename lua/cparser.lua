@@ -1190,8 +1190,50 @@ local line_splitter =
   aggregate(capture(terminated_line)^0 * capture(unterminated_line)^-1 * eof)
 local spaces_only = space ^ 0 * eof
 
+local last_split_text, last_split_table
 function split_input_lines(input)
-  return match(line_splitter, input)
+  if input == last_split_text then
+    return last_split_table
+  end
+  last_split_text = input
+  last_split_table = match(line_splitter, input)
+  return last_split_table
+end
+
+function line_from_offset(offset, offsettable)
+  local l, r = 1, #offsettable
+  if offset >= offsettable[r] then
+    return r
+  end
+  while l < r do
+    local m = (l + r - (l + r) % 2)/2
+    if offset < offsettable[m] then
+      r = m-1
+    elseif offset >= offsettable[m+1] then
+      l = m+1
+    else
+      return m
+    end
+  end
+  return r
+end
+
+local lineno_table = { }
+
+function find_text_coordinates(text, pos)
+  local offsets = lineno_table[text]
+  local result
+  if not offsets then
+    local split = split_input_lines(text)
+    offsets = { }
+    offsets[1] = 1
+    for i = 1, #split do
+      offsets[i+1] = offsets[i] + #(split[i])
+    end
+    lineno_table[text] = offsets
+  end
+  result = line_from_offset(pos, offsets)
+  return result, pos-offsets[result]+1
 end
 
 function preprocess_input(input)
@@ -1219,27 +1261,17 @@ function preprocess_input(input)
 end
 
 function is_line_start(text, pos)
+  local lines = split_input_lines(text)
   if not pos then
     return false
   end
-  local lines = split_input_lines(string.sub(text,1,pos-1))
-  if match(spaces_only, lines[#lines]) then
-    return true
-  else
-    return false
-  end
+  local lineno, col = find_text_coordinates(text, pos)
+  return match(spaces_only, string.sub(lines[lineno], 1, col-1))
 end
 
 function find_source_position(text, pos, mapping)
-  local prefix = string.sub(text, 1, pos)
-  local lines = split_input_lines(prefix)
   local all_lines = split_input_lines(text)
-  local lineno = #lines
-  local colno = #lines[#lines]
-  if colno == 0 then
-    colno = #lines[#lines-1]
-    lineno = lineno-1
-  end
+  local lineno, colno = find_text_coordinates(text, pos)
   return mapping[lineno][1], mapping[lineno][2], colno, all_lines[lineno]
 end
 
