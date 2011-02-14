@@ -47,6 +47,10 @@
 /* index, on Lua stack, for table holding runtime capture values */
 #define pdyncapidx(ptop) ((ptop) + 5)
 
+/* push nil instead of the parsed string as the first argument of a runtime
+ * capture. This considerably improves performance for large strings. */
+#define PUSH_NIL_SUBJECT 1
+
 typedef unsigned char byte;
 
 
@@ -2172,7 +2176,11 @@ static int runtimecap (lua_State *L, Capture *close, Capture *ocap,
   pushluaval(&cs);
   switch(s->kind) {  /* current position */
     case Sstring: {
+#if PUSH_NIL_SUBJECT
+      lua_pushnil(L);
+#else
       lua_pushlstring(L, s->u.s.o, s->u.s.e - s->u.s.o);
+#endif
       lua_pushinteger(L, s->u.s.s - s->u.s.o + 1); 
       break;
     }
