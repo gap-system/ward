@@ -24,6 +24,8 @@ make install
 cd $LUA_ROOT/ext/lpeg
 luarocks make lpeg-local-1.rockspec && cp lpeg.so $LUA_ROOT/lib/lua/5.1
 cd $LUA_ROOT
+cp -f ext/luarocks-2.0.2/src/bin/luarocks-orig ext/luarocks-2.0.2/src/bin/luarocks
+cp -f ext/luarocks-2.0.2/src/bin/luarocks-admin-orig ext/luarocks-2.0.2/src/bin/luarocks-admin
 LUA_PATH=`bin/lua -e 'print(package.path)'`
 cat >bin/ward <<EOF
 #!/bin/sh
