@@ -31,6 +31,15 @@ while i <= #arg do
       if options.pass_count == 0 then
         system_error("The number of passes must be at least 1")
       end
+    elseif argument == "-I" then
+      local incdir = arg[i]
+      i = i + 1
+      if not incdir then
+       system_error "The -I option requires a directory argument"
+      end
+      push(preprocessor_options, "-I"..incdir)
+    elseif string.sub(argument, 1, 2) == "-I" then
+      push(preprocessor_options, argument)
     elseif argument == "-errors" then
       options.report_type = "errors"
     elseif argument == "-suggest" then
