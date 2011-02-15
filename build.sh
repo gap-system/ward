@@ -31,9 +31,10 @@ export LUA_PATH='$LUA_ROOT/lua/?.lua;$LUA_PATH'
 "$LUA_ROOT/bin/lua" "$LUA_ROOT/lua/ward.lua" "\$@"
 EOF
 chmod 755 bin/ward
+LUAJIT_PATH=`bin/luajit2 -e 'print(package.path)'`
 cat >bin/cward <<EOF
 #!/bin/sh
-export LUA_PATH='$LUA_ROOT/lua/?.lua;$LUA_PATH'
+export LUA_PATH='$LUA_ROOT/lua/?.lua;$LUAJIT_PATH'
 "$LUA_ROOT/bin/luajit2" -joff "$LUA_ROOT/lua/ward.lua" "\$@"
 EOF
 chmod 755 bin/cward
@@ -45,7 +46,7 @@ EOF
 chmod 755 bin/addguards
 cat >bin/addguardsc <<EOF
 #!/bin/sh
-export LUA_PATH='$LUA_ROOT/lua/?.lua;$LUA_PATH'
+export LUA_PATH='$LUA_ROOT/lua/?.lua;$LUAJIT_PATH'
 "$LUA_ROOT/bin/luajit2" "$LUA_ROOT/lua/addguards.lua" "\$@"
 EOF
 chmod 755 bin/addguardsc
@@ -58,7 +59,7 @@ EOF
 chmod 755 bin/addguards2
 cat >bin/addguards2c <<EOF
 #!/bin/sh
-export LUA_PATH='$LUA_ROOT/lua/?.lua;$LUA_PATH'
+export LUA_PATH='$LUA_ROOT/lua/?.lua;$LUAJIT_PATH'
 export WARD=$LUA_ROOT
 "$LUA_ROOT/bin/luajit2" "$LUA_ROOT/lua/addguards2c.lua" "\$@"
 EOF
