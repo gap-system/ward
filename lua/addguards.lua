@@ -1,4 +1,5 @@
-lpeg = require "listlpeg"
+lpeg = require "lpeg"
+lpeg.setmaxstack(1000)
 
 -- Some more readable versions of the lpeg primitives.
 
