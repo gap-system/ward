@@ -2,12 +2,14 @@ config_track_actions = false
 
 WriteGuards = {
   WriteGuard = true,
+  ImpliedWriteGuard = true,
   WriteGuardBag = true,
   WriteGuardObj = true,
 }
 
 ReadGuards = {
   ReadGuard = true,
+  ImpliedReadGuard = true,
   ReadGuardBag = true,
   ReadGuardObj = true,
 }
