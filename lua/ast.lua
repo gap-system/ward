@@ -9,9 +9,9 @@ end
 function Type:to_string()
   local result
   if next(self) == nil then
-    return self.class_name
+    return self.__class_name__
   end
-  result = self.class_name .. "["
+  result = self.__class_name__ .. "["
   local comma = false
   for k, v in pairs(self) do
     if comma then
@@ -20,7 +20,7 @@ function Type:to_string()
       comma = true
     end
     if type(v) == "table" then
-      if v.base_class == Type then
+      if v.__base__ == Type then
         result = result .. k .. "=" .. v:to_string()
       else
         result = result .. k .. "= ?"
