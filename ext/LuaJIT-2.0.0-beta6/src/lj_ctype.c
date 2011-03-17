@@ -522,7 +522,7 @@ GCstr *lj_ctype_repr_int64(lua_State *L, uint64_t n, int isunsigned)
 /* Convert complex to string with 'i' or 'I' suffix. */
 GCstr *lj_ctype_repr_complex(lua_State *L, void *sp, CTSize size)
 {
-  char buf[2*LUAI_MAXNUMBER2STR+2+1];
+  char buf[2*LJ_STR_NUMBUF+2+1];
   TValue re, im;
   size_t len;
   if (size == 2*sizeof(double)) {
@@ -540,7 +540,7 @@ GCstr *lj_ctype_repr_complex(lua_State *L, void *sp, CTSize size)
 /* -- C type state -------------------------------------------------------- */
 
 /* Initialize C type table and state. */
-void lj_ctype_init(lua_State *L)
+CTState *lj_ctype_init(lua_State *L)
 {
   CTState *cts = lj_mem_newt(L, sizeof(CTState), CTState);
   CType *ct = lj_mem_newvec(L, CTTYPETAB_MIN, CType);
@@ -568,6 +568,7 @@ void lj_ctype_init(lua_State *L)
     }
   }
   setmref(G(L)->ctype_state, cts);
+  return cts;
 }
 
 /* Free C type table and state. */

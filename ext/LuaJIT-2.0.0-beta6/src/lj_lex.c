@@ -36,7 +36,7 @@ TKDEF(TKSTR1, TKSTR2)
 
 /* -- Buffer handling ----------------------------------------------------- */
 
-#define char2int(c)		cast(int, cast(uint8_t, (c)))
+#define char2int(c)		((int)(uint8_t)(c))
 #define next(ls) \
   (ls->current = (ls->n--) > 0 ? char2int(*ls->p++) : fillbuf(ls))
 #define save_and_next(ls)	(save(ls, ls->current), next(ls))
@@ -170,10 +170,15 @@ static void lex_number(LexState *ls, TValue *tv)
     if (c == 'I') {  /* Return cdata holding a complex number. */
       GCcdata *cd = lj_cdata_new_(ls->L, CTID_COMPLEX_DOUBLE, 2*sizeof(double));
       ((double *)cdataptr(cd))[0] = 0;
-      ((double *)cdataptr(cd))[1] = tv->n;
+      ((double *)cdataptr(cd))[1] = numberVnum(tv);
       lj_parse_keepcdata(ls, tv, cd);
     }
 #endif
+    if (LJ_DUALNUM && tvisnum(tv)) {
+      int32_t k = lj_num2int(numV(tv));
+      if ((lua_Number)k == numV(tv))  /* -0 cannot end up here. */
+	setintV(tv, k);
+    }
     return;
   }
   lj_lex_error(ls, TK_number, LJ_ERR_XNUMBER);
@@ -506,7 +511,7 @@ void lj_lex_init(lua_State *L)
   for (i = 0; i < TK_RESERVED; i++) {
     GCstr *s = lj_str_newz(L, tokennames[i]);
     fixstring(s);  /* Reserved words are never collected. */
-    s->reserved = cast_byte(i+1);
+    s->reserved = (uint8_t)(i+1);
   }
 }
 
