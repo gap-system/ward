@@ -1,7 +1,7 @@
 LIBNAME = lpeg
-LUADIR = /lua5.1/
+LUADIR = /usr/include/lua5.1/
 
-COPT = -O2 -DNDEBUG -I$(HOME)/include
+COPT = -O2 -DNDEBUG
 
 CWARNS = -Wall -Wextra -pedantic \
         -Waggregate-return \
@@ -25,12 +25,12 @@ CFLAGS = $(CWARNS) $(COPT) -ansi -I$(LUADIR)
 CC = gcc
 
 # For Linux
-# DLLFLAGS = -shared -fpic
-# ENV = 
+DLLFLAGS = -shared -fpic
+ENV = 
 
 # For Mac OS
-ENV = MACOSX_DEPLOYMENT_TARGET=10.4
-DLLFLAGS = -bundle -undefined dynamic_lookup
+# ENV = MACOSX_DEPLOYMENT_TARGET=10.4
+# DLLFLAGS = -bundle -undefined dynamic_lookup
 
 lpeg.so: lpeg.o
 	env $(ENV) $(CC) $(DLLFLAGS) lpeg.o -o lpeg.so
