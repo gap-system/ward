@@ -111,10 +111,11 @@ end
 
 local function trans_tl(input, node)
   local newbags = node.newbags
+  local result = assignments(input, node)
   for i = 1, #newbags do
-    input[i] = true
+    result[newbags[i]] = true
   end
-  return assignments(input, node)
+  return result
 end
 
 local function standard_changed_from(new, old)
@@ -239,6 +240,7 @@ local function init_properties(node)
       ast:fix_types()
     end
     ast:track_aliases_and_guards(node.assign, node.wg, node.rg)
+    ast:track_thread_locals(node.newbags)
     for _, pair in ipairs(node.assign) do
       node.assignto[pair[1]] = true
       if pair[2] then

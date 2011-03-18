@@ -988,6 +988,7 @@ local grammar = pattern {
 	  if type:is_function() then
 	    local funcdef = storage
 	    funcdef.type = type.result_type
+	    funcdef.arg_types = type.arg_types
 	    funcdef.name = name
 	    funcdef.filename = source_file_name
 	    funcdef.graph = nil
@@ -1112,6 +1113,7 @@ local grammar = pattern {
 	  basetype = new(TypeRef, basetype)
 	end
 	funcdef.type = basetype
+	funcdef.arg_types = map(args, function(arg) return arg[2]; end)
 	funcdef.name = name
 	funcdef.filename = source_file_name
 	funcdef.args = args

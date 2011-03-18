@@ -34,13 +34,28 @@ end
 
 local is_bag_name = {
   Bag = true,
-  Obj = true
+  BagW = true,
+  BagR = true,
+  Obj = true,
+  ObjW = true,
+  ObjR = true,
+}
+
+local bag_type = {
+  BagW = "W",
+  BagR = "R",
+  ObjW = "W",
+  ObjR = "R",
 }
 
 function Type:bag()
   -- nil for types that aren't bags or bag pointers/arrays
   -- 0 for bags, 1 for a pointer to a bag, 2 for a pointer to a pointer to a bag.
   -- arrays are treated as pointers
+  return nil
+end
+
+function Type:prot_bag()
   return nil
 end
 
@@ -137,6 +152,10 @@ function TypeUserDef:bag()
   return is_bag_name[self.name] and 0
 end
 
+function TypeUserDef:prot_bag()
+  return bag_type[self.name]
+end
+
 Expr = class()
 
 function Expr:create()
@@ -231,6 +250,7 @@ end
 ExprCall = class(Expr)
 
 function ExprCall:create(pos, func, args)
+  local funcname = func.name
   self.pos = pos
   self.func = func
   self.args = args
@@ -238,12 +258,15 @@ function ExprCall:create(pos, func, args)
   for i = 1, #args do
     push(self.children, args[i])
   end
-  if static_functions[func] then
-    self.type = static_functions[func].return_type
-  elseif global_functions[func] then
-    self.type = global_functions[func].return_type
+  if static_functions[funcname] then
+    self.type = static_functions[funcname].type
+    self.arg_types = static_functions[funcname].arg_types
+  elseif global_functions[funcname] then
+    self.type = global_functions[funcname].type
+    self.arg_types = global_functions[funcname].arg_types
   else
     self.type = type_int
+    self.arg_types = { }
   end
 end
 
@@ -258,28 +281,30 @@ function ExprCall:bag_access(read, write, realread, realwrite, deref_depth)
     local var = self.local_vars[name]
     local func = self.func.name
     if var and bag and bag < 2 then
-      if not func then
-        push(realwrite, var)
-	push(realwrite, pos)
+      local argprot = nil
+      if Externals[func] then
+        local argtypes = Externals[func]
+	if i > #argtypes then
+	  argprot = argtypes[-1]
+	else
+	  argprot = argtypes[i]
+	end
       else
-        local funcdef = self.static_functions[func]
-	if not funcdef then
-	  funcdef = global_functions[func]
+	local argtypes = self.arg_types
+	local argtype
+	if argtypes then
+	  argtype = argtypes[i]
 	end
-	if not ReadGuards[func] and not WriteGuards[func] then
-	  if not funcdef or not funcdef.arg_writes then
-	    push(realwrite, var)
-	    push(realwrite, pos)
-	  else
-	    if funcdef.arg_writes[var] then
-	      push(realwrite, var)
-	      push(realwrite, pos)
-	    elseif funcdef.arg_reads[var] then
-	      push(realread, var)
-	      push(realread, pos)
-	    end
-	  end
+	if argtype then
+	  argprot = argtype:prot_bag()
 	end
+      end;
+      if argprot == "R" then
+	push(realread, var)
+	push(realread, pos)
+      elseif argprot == "W" then
+	push(realwrite, var)
+	push(realwrite, pos)
       end
     end
   end
@@ -368,7 +393,7 @@ function ExprAssign:track_thread_locals(list)
   local tbag = self.target.type:bag()
   if tbag == 0 then
     local tvar = self.local_vars[self.target:var_name()]
-    if tvar and self.expr.funcname == "NewBag" then
+    if tvar and self.expr.func and self.expr.func.name == "NewBag" then
       push(list, tvar)
     end
   end
@@ -481,6 +506,10 @@ function ExprCast:create(pos, cast_type, cast_expr)
   self.cast_expr = cast_expr
   self.children = { cast_expr }
   self.type = cast_type
+end
+
+function ExprCast:bag_access(...)
+  return self.cast_expr:bag_access(...)
 end
 
 ExprVar = class(Expr)
