@@ -11,21 +11,23 @@ case `uname -s` in
     export PLATFORM=posix
     ;;
 esac
-cd $LUA_ROOT/ext/lua-5.1.4
+test -e .ward_directory && rm -rf build
+test -e .ward_directory && cp -pr ext build
+cd $LUA_ROOT/build/lua-5.1.4
 make INSTALL_TOP=$LUA_ROOT $PLATFORM install
-cd $LUA_ROOT/ext/LuaJIT-2.0.0-beta6
+cd $LUA_ROOT/build/LuaJIT-2.0.0-beta6
 make PREFIX=$LUA_ROOT install
 cd $LUA_ROOT/bin
 ln -sf luajit-2.0.0-beta6 luajit2
 export PATH=$LUA_ROOT/bin:$PATH
-cd $LUA_ROOT/ext/luarocks-2.0.2
+cd $LUA_ROOT/build/luarocks-2.0.2
 ./configure
 make install
-cd $LUA_ROOT/ext/lpeg
+cd $LUA_ROOT/build/lpeg
 luarocks make lpeg-local-1.rockspec && cp lpeg.so $LUA_ROOT/lib/lua/5.1
 cd $LUA_ROOT
-cp -f ext/luarocks-2.0.2/src/bin/luarocks-orig ext/luarocks-2.0.2/src/bin/luarocks
-cp -f ext/luarocks-2.0.2/src/bin/luarocks-admin-orig ext/luarocks-2.0.2/src/bin/luarocks-admin
+cp -f build/luarocks-2.0.2/src/bin/luarocks-orig build/luarocks-2.0.2/src/bin/luarocks
+cp -f build/luarocks-2.0.2/src/bin/luarocks-admin-orig build/luarocks-2.0.2/src/bin/luarocks-admin
 LUA_PATH=`bin/lua -e 'print(package.path)'`
 cat >bin/ward <<EOF
 #!/bin/sh
