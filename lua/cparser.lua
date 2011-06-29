@@ -788,7 +788,7 @@ local grammar = pattern {
     action(aggregate(value("")) * (sp * rule "restrict")^-1 *
       rule "type_postfix", build_type_postfix),
   opt_asm_declaration =
-    (sp * (keyword "asm" + keyword "__asm__" + keyword "__asm") *
+    (sp * (keyword "asm" + keyword "__asm__" + keyword "__asm") * sp *
       pattern "(" * sp * string_constant * sp * pattern ")")^-1,
   init_expression_list = (rule "init_expression" * (sp * pattern "," * sp *
     rule "init_expression")^0 * (sp * pattern ",")^-1)^-1,
