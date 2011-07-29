@@ -1,0 +1,9 @@
+The ext/ directory contains external software that is distributed under its own
+copyright. See the relevant subdirectories for notes on how these pieces of
+software can be copied and reused.
+
+Most of the software is unmodified. The exception is the Lua 5.1.4 distribution
+that required some modifications for the build process. These modifications
+include removing the dependency on the GNU readline library and also allows
+the external configuration of the LUA_ROOT directory via a preprocessor
+#define.
