@@ -135,7 +135,7 @@ local keywords = {
   'static', '_Complex', 'default', 'inline', 'struct', '_Imaginary', 'do',
   'int', 'switch', 'double', 'long', 'typedef', 'else', 'register',
   'union', '__asm', '__asm__', '__thread', '__builtin_va_list', '__inline__',
-  '__builtin_va_arg', '__extension__', '__const', '__restrict',
+  '__builtin_va_arg', '__extension__', '__const', '__restrict', '__volatile__',
 }
 
 local is_keyword = { }
@@ -856,7 +856,8 @@ local grammar = pattern {
       else
         return pos, new(ExprComma, nil, list)
       end
-    end),
+    end)+
+    keyword "__extension__" * sp * rule "expression",
   assignment_expression =
     action(aggregate(rule "cond_expression" * (sp * assignment_operator * sp *
       rule "cond_expression")^0),
@@ -917,8 +918,14 @@ local grammar = pattern {
     pattern "(" * sp * rule "expression" * sp * pattern ")" +
     string_constant * value(new(ExprConstant))+
     char_literal * value(new(ExprConstant))+
-    keyword "__extension__" * sp * rule "primary_expression" +
+    rule "aggregate_expression"+
     rule "vararg_expr",
+  aggregate_expression =
+    action(pattern "{" * sp * rule "expression" *
+      (sp * pattern "," * sp * rule "expression")^0 * (pattern ",")^-1
+      * sp * pattern "}", function(str, pos)
+        return pos, new(ExprConstant)
+      end),
   postfix =
     action(pattern "(" * sp * rule "actual_arguments" * sp * pattern ")",
       function(str, pos, arglist)
@@ -1069,6 +1076,7 @@ local grammar = pattern {
   opt_asm_args = pattern ":" * rule "asm_registers" * (pattern ":" *
     rule "asm_registers" * (pattern ":" * (sp * string_constant)^-1)^-1)^-1,
   asm_statement = (keyword_pos "asm" + keyword "__asm__" + keyword "__asm") *
+    (sp * (keyword "volatile" + keyword "__volatile__"))^-1 *
     sp * pattern "(" * sp * string_constant * sp * (rule "opt_asm_args" * sp) *
     pattern ")" * position(),
   statement = rule "if_statement" +
