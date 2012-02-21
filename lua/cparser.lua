@@ -126,6 +126,7 @@ local storage_classifier_table = {
   __inline__ = "inline",
   static = "static",
   __thread = "thread",
+  __attribute__ = "attribute",
 }
 
 local keywords = {
@@ -829,7 +830,8 @@ local grammar = pattern {
     keyword "__thread" +
     keyword "extern" +
     keyword "register" +
-    keyword "auto"),
+    keyword "auto") +
+    action(attributes, discard) * value("__attribute__"),
   storage_classifiers =
     action(aggregate((rule "storage_classifier" * sp) ^ 0),
     function (str, pos, list)

@@ -80,4 +80,4 @@ if files_parsed > 0 and not options.parse_only then
   run_dataflow_analysis()
 end
 
--- os.exit(0)
+os.exit(0)
