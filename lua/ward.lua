@@ -40,6 +40,8 @@ while i <= #arg do
       push(preprocessor_options, "-I"..incdir)
     elseif string.sub(argument, 1, 2) == "-I" then
       push(preprocessor_options, argument)
+    elseif string.sub(argument, 1, 2) == "-D" then
+      push(preprocessor_options, argument)
     elseif argument == "-errors" then
       options.report_type = "errors"
     elseif argument == "-suggest" then
