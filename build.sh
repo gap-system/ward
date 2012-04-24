@@ -15,10 +15,10 @@ test -e .ward_directory && rm -rf build
 test -e .ward_directory && cp -pr ext build
 cd $LUA_ROOT/build/lua-5.1.4
 make INSTALL_TOP=$LUA_ROOT $PLATFORM install
-cd $LUA_ROOT/build/LuaJIT-2.0.0-beta6
+cd $LUA_ROOT/build/LuaJIT-2.0.0-beta9
 make PREFIX=$LUA_ROOT install
 cd $LUA_ROOT/bin
-ln -sf luajit-2.0.0-beta6 luajit2
+ln -sf luajit-2.0.0-beta9 luajit2
 export PATH=$LUA_ROOT/bin:$PATH
 cd $LUA_ROOT/build/luarocks-2.0.2
 ./configure
