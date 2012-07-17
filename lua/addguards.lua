@@ -183,9 +183,9 @@ local function replace_var(line, var, guard)
 end
 
 local assignment = space ^ 0 * alpha * (alpha + digit)^ 0 * space ^ 0 *
-  (pattern "="+pattern "[") * (1-pattern "=") * (1-pattern ";")^0 *
-  (pattern ";" + pattern ",") *
-  space ^ 0 * eof
+  (pattern "="+pattern "[") * (1-pattern "=") *
+  ((1-(pattern ";"+pattern "," + pattern "("))^0 *
+  (pattern ";" + pattern "," + pattern "("))^1 * space ^ 0 * eof
 local macro_or_expr = space ^ 0 * range "AZ" * (alpha + digit)^ 0 * space ^ 0 *
   pattern "(" * ((1-pattern ";") ^ 0 * pattern ";")^1 * eof
 local else_if = aggregate(capture(space ^ 0 *
