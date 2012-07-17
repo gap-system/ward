@@ -17,9 +17,15 @@ cd $LUA_ROOT/build/lua-5.1.4
 make INSTALL_TOP=$LUA_ROOT $PLATFORM install
 export PATH=$LUA_ROOT/bin:$PATH
 cd $LUA_ROOT/build/LuaJIT-2.0.0-beta9
-make PREFIX=$LUA_ROOT install
-cd $LUA_ROOT/bin
-ln -sf luajit-2.0.0-beta9 luajit2
+if make PREFIX=$LUA_ROOT install; then
+  cd $LUA_ROOT/bin
+  ln -sf luajit-2.0.0-beta9 luajit2
+  LUA_JITOFF=" -joff"
+else
+  cd $LUA_ROOT/bin
+  ln -sf lua luajit2
+  LUA_JITOFF=""
+fi;
 cd $LUA_ROOT/build/luarocks-2.0.2
 ./configure
 make install
@@ -39,7 +45,7 @@ LUAJIT_PATH=`bin/luajit2 -e 'print(package.path)'`
 cat >bin/cward <<EOF
 #!/bin/sh
 export LUA_PATH='$LUA_ROOT/lua/?.lua;$LUAJIT_PATH'
-"$LUA_ROOT/bin/luajit2" -joff "$LUA_ROOT/lua/ward.lua" "\$@"
+"$LUA_ROOT/bin/luajit2"$LUA_JITOFF "$LUA_ROOT/lua/ward.lua" "\$@"
 EOF
 chmod 755 bin/cward
 cat >bin/addguards <<EOF
