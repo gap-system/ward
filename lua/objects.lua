@@ -1,14 +1,8 @@
 local no_class = "<no class>"
 
-local function method_dispatch(ob, m)
-  return ob.__class__[m]
-end;
-
-local meta_dispatch = { __index = method_dispatch }
-
 function new(basetype, ...)
-  local result = { __class__ = basetype }
-  setmetatable(result, meta_dispatch)
+  local result = { }
+  setmetatable(result, basetype.__dispatch__)
   result:create(...)
   return result
 end
@@ -24,6 +18,8 @@ function class(base)
   else
     result.__base__ = base
   end
+  result.__class__ = result
+  result.__dispatch__ = { __index = result }
   return result
 end
 

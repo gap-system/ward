@@ -1,3 +1,5 @@
+local len = table.maxn
+
 Node = class()
 -- attributes:
 -- changed: has changed since last iteration
@@ -42,17 +44,27 @@ function list_errors(graph, accessproperty, guardproperty)
 end
 
 local function intersection(lists)
-  if #lists == 0 then
+  local n = #lists
+  if n == 0 then
     return { }
+  elseif n == 1 then
+    local result = { }
+    local list = lists[1]
+    for i = 1, len(list) do
+      result[i] = list[i]
+    end
+    return result
   else
     local result = { }
     local list = lists[1]
-    for j, _ in pairs(list) do
-      local r = true
-      for i = 2, #lists do
-        r = r and lists[i][j]
+    for j = 1, #list do
+      if list[j] then
+	local r = true
+	for i = 2, n do
+	  r = r and lists[i][j]
+	end
+	result[j] = r
       end
-      result[j] = r
     end
     return result
   end
@@ -60,11 +72,13 @@ end
 
 local function assignments(input, node)
   local output = { }
-  for var, _ in pairs(input) do
-    if not node.assignto[var] then
-      output[var] = true
-    elseif node.assignfrom[var] then
-      output[node.assignfrom[var]] = true
+  for var = 1, len(input) do
+    if input[var] then
+      if not node.assignto[var] then
+	output[var] = true
+      elseif node.assignfrom[var] then
+	output[node.assignfrom[var]] = true
+      end
     end
   end
   return output
@@ -123,8 +137,8 @@ local function standard_changed_from(new, old)
   if not old then
     return true
   end
-  for i, _ in pairs(new) do
-    if not old[i] then
+  for i = 1, len(new) do
+    if new[i] and not old[i] then
       return true
     end
   end
@@ -135,12 +149,15 @@ local function join_aa(preds)
   local result = { }
   for i = 1, #preds do
     local pred = preds[i]
-    for var, map in pairs(pred) do
-      if not result[var] then
-        result[var] = clone(map)
-      else
-        for var2, _ in map do
-	  result[var][var2] = true
+    for var = 1, len(pred) do
+      map = pred[var]
+      if map then
+	if not result[var] then
+	  result[var] = clone(map)
+	else
+	  for var2, _ in map do
+	    result[var][var2] = true
+	  end
 	end
       end
     end
@@ -150,8 +167,11 @@ end
 
 local function trans_aa(input, node)
   local result = { }
-  for var, map in pairs(input) do
-    result[var] = assignments(map, node)
+  for var = 1, len(input) do
+    map = input[var]
+    if map then
+      result[var] = assignments(map, node)
+    end
   end
   return result
 end
@@ -382,17 +402,20 @@ local function check_argument_accesses(funcdef)
   local writes = { }
   for i = 1, #nodes do
     local node = nodes[i]
-    for arg, map in pairs(node.aain) do
-      for j = 1, #node.writes, 2 do
-        local var = node.writes[j]
-        if map[var] and not node.tlin[var] and not node.wpin[var] then
-	  writes[arg] = true
+    for arg = 1, len(node.aain) do
+      map = node.aain[arg]
+      if map then
+	for j = 1, #node.writes, 2 do
+	  local var = node.writes[j]
+	  if map[var] and not node.tlin[var] and not node.wpin[var] then
+	    writes[arg] = true
+	  end
 	end
-      end
-      for j = 1, #node.reads, 2 do
-        local var = node.reads[j]
-        if map[var] and not node.tlin[var] and not node.rpin[var] then
-	  reads[arg] = true
+	for j = 1, #node.reads, 2 do
+	  local var = node.reads[j]
+	  if map[var] and not node.tlin[var] and not node.rpin[var] then
+	    reads[arg] = true
+	  end
 	end
       end
     end

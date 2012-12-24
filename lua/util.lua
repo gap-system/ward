@@ -80,14 +80,6 @@ function map(table, mapfunc)
   return result
 end
 
-function clone(table)
-  local result = { }
-  for k, v in pairs(table) do
-    result[k] = v
-  end
-  return result
-end
-
 function shell_escape(str)
   if str == "" then
     return "''"
