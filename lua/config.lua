@@ -23,6 +23,8 @@ preprocessor_defines = {
 preprocessor_options = {
   "-I.",
   "-Iarch",
+  "-D__extension__=",
+  "-D__attribute__(x)="
 }
 
 local R, W = "R", "W"
