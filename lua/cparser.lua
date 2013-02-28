@@ -1039,7 +1039,7 @@ local grammar = pattern {
     function (str, pos, start, expr, body, finish)
       return pos, { build_switch_stmt, start, finish, expr, body }
     end),
-  label_statement = action(keyword_pos "case" * sp * expression * ":" *
+  label_statement = action(keyword_pos "case" * sp * expression * sp *":" *
       position(),
       function(str, pos, start, expr, finish)
         return pos, { build_case_stmt, start, finish, expr }
