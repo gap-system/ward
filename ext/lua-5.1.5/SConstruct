@@ -1,0 +1,153 @@
+import sys, os, glob, re
+
+# Parameters we want to be able to specify.
+
+cygwin = sys.platform.startswith("cygwin")
+
+vars = Variables()
+vars.Add("prefix", "Specify installation prefix", "/usr/local")
+vars.Add("cflags", "Additional flags for the C compiler", "")
+if not cygwin:
+  vars.Add(BoolVariable("shared", "Build shared library", True))
+vars.Add(BoolVariable("fixluaconf", "Rename luaconf.h to luaconf.h.in", True))
+
+# Find out Lua's version.
+
+luaversion = 501 # default to 5.1 in case something breaks
+try:
+  with open("src/lua.h") as lua_h:
+    lua_h_contents = lua_h.read()
+    match = re.search("#define\\s+LUA_VERSION_NUM\\s+(\\d+)", lua_h_contents)
+    luaversion = int(match.group(1))
+except:
+  pass
+
+# Create the basic compilation environment.
+
+Lua = DefaultEnvironment(variables=vars, PATH=os.environ["PATH"])
+Help(vars.GenerateHelpText(Lua))
+
+# Set CFLAGS.
+
+prefix = Lua["prefix"]
+if not prefix.endswith("/"):
+  prefix += "/"
+cflags = "-Iinclude -O2"
+libs = []
+
+conf = Configure(Lua)
+if not GetOption("clean") and not GetOption("help"):
+  linux = False
+  macosx = False
+  known_os = False
+  if sys.platform.startswith("linux") or sys.platform.startswith("freebsd"):
+    cflags += " -DLUA_USE_LINUX"
+    linux = known_os = True
+  elif sys.platform.startswith("darwin"):
+    cflags += " -DLUA_USE_MACOSX"
+    macosx = known_os = True
+  else:
+    # We also build on Cygwin as a POSIX system.
+    cflags += " -DLUA_USE_POSIX"
+  if (conf.CheckLib("readline") and
+      conf.CheckHeader("readline/readline.h") and
+      conf.CheckHeader("readline/history.h")):
+    libs.append("readline")
+    if not (linux or (luaversion >= 502 and known_os)):
+      cflags += " -DLUA_USE_READLINE"
+  if conf.CheckLib("dl") and conf.CheckHeader("dlfcn.h"):
+    libs.append("dl")
+    if not known_os:
+      cflags += " -DLUA_USE_DLOPEN"
+  if conf.CheckLib("ncurses"):
+    libs.append("ncurses")
+
+if Lua["cflags"]:
+  cflags += " " + Lua["cflags"]
+
+Lua["CFLAGS"] = cflags
+
+# Build object files in a separate directory.
+# Must be relative to src.
+
+Lua["OBJPREFIX"] = "../obj/"
+
+# Find source files, exclude source for lua/luac binaries.
+
+libsource = glob.glob("src/*.c")
+libsource.remove("src/lua.c")
+libsource.remove("src/luac.c")
+
+# Patching luaconf.h to get LUA_ROOT right.
+
+if os.path.exists("src/luaconf.h") and not GetOption("clean"):
+  if Lua["fixluaconf"] and not os.path.exists("src/luaconf.h.in"):
+    os.rename("src/luaconf.h", "src/luaconf.h.in")
+  else:
+    print("scons: *** Must rename src/luaconf.h to src/luaconf.h.in")
+    Exit(1)
+
+def MakeLuaConf(target, source, env):
+  with open(str(source[0])) as input:
+    luaconf = input.read()
+  luaconf = re.sub("#define\\s+LUA_ROOT\\s.*",
+                   "#define LUA_ROOT \"" + prefix + "\"",
+		   luaconf)
+  with open(str(target[0]), "w") as output:
+    output.write(luaconf)
+  return None
+
+Lua.Command("include/luaconf.h", "src/luaconf.h.in", MakeLuaConf)
+
+# Auto dependency generator will not recognize generated files.
+
+for src in libsource + [ "src/lua.c", "src/luac.c" ]:
+  Lua.Depends(src, "include/luaconf.h")
+
+# Library paths.
+
+libstatic = "lib/" + Lua["LIBPREFIX"] + "lua" + Lua["LIBSUFFIX"]
+if cygwin:
+  libshared = "bin/" + "lua" + Lua["SHLIBSUFFIX"]
+elif Lua["shared"]:
+  libshared = "lib/" + Lua["LIBPREFIX"] + "lua" + Lua["SHLIBSUFFIX"]
+else:
+  libshared = None
+
+# Build programs and libraries.
+
+if libstatic:
+  Lua.StaticLibrary(libstatic, libsource)
+if libshared:
+  Lua.SharedLibrary(libshared, libsource)
+if not cygwin:
+  Lua.Program("bin/lua", ["src/lua.c", libstatic], LIBS=libs)
+  Lua.Program("bin/luac", ["src/luac.c", libstatic], LIBS=libs)
+else:
+  # Cygwin builds require lua to be linked against the .dll
+  Lua.Program("bin/lua", ["src/lua.c", libshared], LIBS=libs)
+  Lua.Program("bin/luac", ["src/luac.c", libstatic], LIBS=libs)
+
+# Install Lua binaries, libraries, and auxiliary files.
+
+Lua.Install(prefix + "bin",
+  map(lambda s: s + Lua["PROGSUFFIX"], [ "bin/lua", "bin/luac" ]))
+if libstatic:
+  Lua.Install(prefix + "lib", [ libstatic ])
+if libshared:
+  Lua.Install(prefix + "lib", [ libshared ])
+  if cygwin:
+    Lua.Install(prefix + "bin", [ libshared ])
+Lua.Install(prefix + "include",
+  [ "src/lua.h", "include/luaconf.h", "src/lualib.h", "src/lauxlib.h" ] +
+    glob.glob("src/lua.hpp") + glob.glob("etc/lua.hpp"))
+Lua.Install(prefix + "man/man1", [ "doc/lua.1", "doc/luac.1" ])
+Lua.Command(prefix + "lib/lua", [], [ Mkdir("$TARGET") ])
+Lua.Command(prefix + "share/lua", [], [ Mkdir("$TARGET") ])
+
+# Create convenience aliases for installation/uninstallation.
+
+Lua.Alias("install", prefix)
+Lua.Alias("uninstall", prefix)
+if "uninstall" in COMMAND_LINE_TARGETS:
+  SetOption("clean", 1)

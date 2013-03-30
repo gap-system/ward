@@ -1,0 +1,87 @@
+import os, sys, glob, commands
+
+modname = "lpeg"
+
+sourcepath = "."
+objpath = "obj"
+
+# sourcepath = "src"
+# objpath = "../obj"
+
+vars = Variables()
+vars.Add("prefix", "Specify installation prefix", "/usr/local")
+vars.Add(BoolVariable("luajit", "Build for LuaJIT", 0))
+
+cygwin = sys.platform.startswith("cygwin")
+
+source = glob.glob(sourcepath + "/*.c")
+
+# The Lua dynamic loader assumes the extension always to be .so,
+# even on Windows and OS X, where it's normally different.
+
+modname += ".so"
+
+mod = DefaultEnvironment(variables=vars, PATH=os.environ["PATH"])
+prefix = mod["prefix"]
+luajit = mod["luajit"]
+
+# Determine Lua/LuaJIT versions
+
+if luajit:
+  luapath = prefix + "/bin/luajit"
+else:
+  luapath = prefix + "/bin/lua"
+
+if not luajit:
+  if not os.path.exists(luapath):
+    print "scons: *** Lua executable not found at " + luapath
+    Exit(1)
+else:
+  if not os.path.exists(luapath):
+    print "scons: *** LuaJIT executable not found at " + luapath
+    Exit(1)
+
+luaversion = commands.getoutput(luapath + " " +
+    '''-e "print(string.match(_VERSION, [[%d.*]]))"''')
+
+# Cygwin needs some extra wrangling for the link process to work.
+
+if cygwin:
+  mod.Prepend(LIBPATH = [ prefix+"/bin" ])
+  if not luajit:
+    mod.Prepend(LIBS = [ "lua"])
+  else:
+    version_suffix = str(luaversion).replace(".", "")
+    mod.Prepend(LIBS = [ "cyglua" + version_suffix ])
+
+# SCons doesn't know that OS X needs dynamic_lookup in order to
+# build loadable shared libraries, so we tell it that.
+
+if sys.platform.startswith("darwin"):
+  flags = "-undefined dynamic_lookup"
+else:
+  flags = ""
+
+# Build the module.
+
+while objpath.endswith("/"):
+  objpath = objpath[:-1]
+if not luajit:
+  objprefix = objpath + "/"
+  cpppath = prefix + "/include"
+else:
+  objprefix = objpath+"-jit/"
+  cpppath = prefix + "/include/luajit-2.0"
+mod.LoadableModule(objprefix+modname, source,
+    LINKFLAGS=flags, LIBPREFIX="", LIBSUFFIX="", OBJPREFIX=objprefix,
+    CPPPATH = cpppath)
+
+# Install the module.
+
+mod.Install(prefix + "/lib/lua/" + luaversion, objprefix + modname)
+mod.Install(prefix + "/share/lua/" + luaversion,
+    glob.glob(sourcepath + "/*.lua"))
+mod.Alias("install", prefix)
+mod.Alias("install", prefix)
+if "uninstall" in COMMAND_LINE_TARGETS:
+  mod.SetOption("clean", True)
