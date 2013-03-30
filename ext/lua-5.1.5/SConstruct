@@ -71,7 +71,7 @@ if not GetOption("clean") and not GetOption("help"):
     libs.append("ncurses")
   if conf.CheckLib("m"):
     libs.append("m")
-  if conf.CheckLinkerFlags():
+  if not cygwin and conf.CheckLinkerFlags():
     Lua.Prepend(LINKFLAGS="-Wl,-E")
 
 if Lua["cflags"]:
