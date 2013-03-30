@@ -57,7 +57,7 @@ local function intersection(lists)
   else
     local result = { }
     local list = lists[1]
-    for j = 1, #list do
+    for j = 1, len(list) do
       if list[j] then
 	local r = true
 	for i = 2, n do
