@@ -35,7 +35,17 @@ if not prefix.endswith("/"):
 cflags = "-Iinclude -O2"
 libs = []
 
-conf = Configure(Lua)
+def CheckLinkerFlags(context):
+  savedflags = Lua["LINKFLAGS"]
+  Lua.Prepend(LINKFLAGS="-Wl,-E")
+  context.Message("Checking whether linker supports -Wl,-E ...")
+  result = conf.TryLink("int main() { return 0; }", ".c")
+  context.Result(result)
+  Lua.Replace(LINKFLAGS=savedflags)
+  return result
+    
+conf = Configure(Lua, custom_tests = { "CheckLinkerFlags" : CheckLinkerFlags })
+
 if not GetOption("clean") and not GetOption("help"):
   linux = False
   macosx = False
@@ -49,9 +59,7 @@ if not GetOption("clean") and not GetOption("help"):
   else:
     # We also build on Cygwin as a POSIX system.
     cflags += " -DLUA_USE_POSIX"
-  if (conf.CheckLib("readline") and
-      conf.CheckHeader("readline/readline.h") and
-      conf.CheckHeader("readline/history.h")):
+  if conf.CheckLib("readline"):
     libs.append("readline")
     if not (linux or (luaversion >= 502 and known_os)):
       cflags += " -DLUA_USE_READLINE"
@@ -61,6 +69,10 @@ if not GetOption("clean") and not GetOption("help"):
       cflags += " -DLUA_USE_DLOPEN"
   if conf.CheckLib("ncurses"):
     libs.append("ncurses")
+  if conf.CheckLib("m"):
+    libs.append("m")
+  if conf.CheckLinkerFlags():
+    Lua.Prepend(LINKFLAGS="-Wl,-E")
 
 if Lua["cflags"]:
   cflags += " " + Lua["cflags"]
