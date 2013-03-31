@@ -16,7 +16,7 @@ if not os.path.exists(".ward_directory"):
   sys.exit(1)
 
 # Copy everything to a separate build directory
-sh("cp -prf ext build")
+sh("cp -pRf ext build")
 
 # Build and install Lua
 sh('scons/scons -j 4 -C build/lua-5.1.5 prefix="'+root+'/lua" install')
