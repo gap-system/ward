@@ -70,15 +70,13 @@ if not GetOption("clean") and not GetOption("help"):
   linux = False
   macosx = False
   known_os = False
+  cflags += " -DLUA_USE_POSIX"
   if sys.platform.startswith("linux") or sys.platform.startswith("freebsd"):
     cflags += " -DLUA_USE_DLOPEN"
     linux = known_os = True
   elif sys.platform.startswith("darwin"):
     cflags += " -DLUA_USE_DL_DYLD"
     macosx = known_os = True
-  else:
-    # We also build on Cygwin as a POSIX system.
-    cflags += " -DLUA_USE_POSIX"
   if conf.CheckLib("readline") and conf.CheckReadLineHeaders():
     libs.append("readline")
     if not (linux or (luaversion >= 502 and known_os)):
