@@ -70,13 +70,13 @@ if not GetOption("clean") and not GetOption("help"):
   linux = False
   macosx = False
   known_os = False
-  cflags += " -DLUA_USE_POSIX"
   if sys.platform.startswith("linux") or sys.platform.startswith("freebsd"):
-    cflags += " -DLUA_USE_DLOPEN"
+    cflags += " -DLUA_DL_DLOPEN"
     linux = known_os = True
   elif sys.platform.startswith("darwin"):
-    cflags += " -DLUA_USE_DL_DYLD"
+    cflags += " -DLUA_DL_DYLD"
     macosx = known_os = True
+  cflags += " -DLUA_USE_POSIX"
   if conf.CheckLib("readline") and conf.CheckReadLineHeaders():
     libs.append("readline")
     if not (linux or (luaversion >= 502 and known_os)):
@@ -84,7 +84,7 @@ if not GetOption("clean") and not GetOption("help"):
   if conf.CheckLib("dl") and conf.CheckHeader("dlfcn.h"):
     libs.append("dl")
     if not known_os:
-      cflags += " -DLUA_USE_DLOPEN"
+      cflags += " -DLUA_DL_DLOPEN"
   if conf.CheckLib("ncurses"):
     libs.append("ncurses")
   if conf.CheckLib("m"):
