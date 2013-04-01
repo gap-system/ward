@@ -38,28 +38,48 @@ libs = []
 def CheckLinkerFlags(context):
   savedflags = Lua["LINKFLAGS"]
   Lua.Prepend(LINKFLAGS="-Wl,-E")
-  context.Message("Checking whether linker supports -Wl,-E ...")
+  context.Message("Checking whether linker supports -Wl,-E ... ")
   result = conf.TryLink("int main() { return 0; }", ".c")
   context.Result(result)
   Lua.Replace(LINKFLAGS=savedflags)
   return result
+
+def CheckReadLineHeaders(context):
+  context.Message("Checking for GNU readline headers ... ")
+  result = conf.TryCompile("""
+  #include <stdio.h>
+  #include <readline/readline.h>
+  #include <readline/history.h>
+
+  int main() {
+    readline("");
+    return 0;
+  }
+  """, ".c")
+  context.Result(result)
+  return result
+
+
     
-conf = Configure(Lua, custom_tests = { "CheckLinkerFlags" : CheckLinkerFlags })
+conf = Configure(Lua, custom_tests = {
+  "CheckLinkerFlags" : CheckLinkerFlags,
+  "CheckReadLineHeaders" : CheckReadLineHeaders,
+})
 
 if not GetOption("clean") and not GetOption("help"):
   linux = False
   macosx = False
   known_os = False
   if sys.platform.startswith("linux") or sys.platform.startswith("freebsd"):
-    cflags += " -DLUA_USE_LINUX"
+    cflags += " -DLUA_USE_DLOPEN"
     linux = known_os = True
   elif sys.platform.startswith("darwin"):
-    cflags += " -DLUA_USE_MACOSX"
+    cflags += " -DLUA_USE_DL_DYLD"
     macosx = known_os = True
   else:
     # We also build on Cygwin as a POSIX system.
     cflags += " -DLUA_USE_POSIX"
-  if conf.CheckLib("readline"):
+  if conf.CheckLib("readline") and conf.CheckReadLineHeaders():
     libs.append("readline")
     if not (linux or (luaversion >= 502 and known_os)):
       cflags += " -DLUA_USE_READLINE"
