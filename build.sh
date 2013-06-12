@@ -46,7 +46,10 @@ for cmd in commands:
     lua = cmd[1:] + ".lua"
   elif cmd.endswith("c"):
     luajit = True
-    lua = cmd[:-1] + ".lua"
+    if cmd == "addguards2c":
+      lua = cmd + ".lua"
+    else:
+      lua = cmd[:-1] + ".lua"
   else:
     lua = cmd + ".lua"
   with open("bin/" + cmd, "w") as cmdfile:
