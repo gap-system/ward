@@ -27,7 +27,7 @@ luajit = mod["luajit"]
 
 for opt in ["CC", "CFLAGS", "CXX", "CXXFLAGS"]:
   if os.environ.has_key(opt):
-    GAP[opt] = os.environ[opt]
+    Lua[opt] = os.environ[opt]
 
 # Determine Lua/LuaJIT versions
 
