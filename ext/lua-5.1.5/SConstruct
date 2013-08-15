@@ -27,6 +27,10 @@ except:
 Lua = DefaultEnvironment(variables=vars, PATH=os.environ["PATH"])
 Help(vars.GenerateHelpText(Lua))
 
+for opt in ["CC", "CFLAGS", "CXX", "CXXFLAGS"]:
+  if os.environ.has_key(opt):
+    Lua[opt] = os.environ[opt]
+
 # Set CFLAGS.
 
 prefix = Lua["prefix"]
