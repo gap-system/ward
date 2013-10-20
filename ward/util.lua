@@ -89,9 +89,10 @@ function shell_escape(str)
     return string.gsub(str, "[^%.%=%-%s%w_/]", function(s)
       if s == "\\" then
 	return "\\\\"
+      elseif s == "'" then
+        return [["'"]]
       else
-	local ch = string.byte(s, 1)
-	return string.format("\\%03o", ch)
+        return "'" .. s .. "'"
       end
     end)
   end
