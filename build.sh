@@ -9,6 +9,10 @@ def sh(cmd):
     print "Command failed: " + cmd
     sys.exit(1)
 
+def trysh(cmd):
+  print "SH: " + cmd
+  return not os.system(cmd)
+
 root = os.getcwd()
 
 if not os.path.exists(".ward_directory"):
@@ -30,7 +34,8 @@ if sys.platform.startswith("cygwin"):
 
 # Build and install lpeg for both Lua and LuaJIT.
 sh('scons/scons -j 4 -C build/lpeg-0.11 prefix="'+root+'/lua" install')
-sh('scons/scons -j 4 -C build/lpeg-0.11 luajit=yes prefix="'+root+'/luajit" install')
+have_luajit = trysh('scons/scons -j 4 -C build/lpeg-0.11 luajit=yes prefix="'+root+'/luajit" install')
+  
 
 commands = [
   "ward", "cward", "addguards", "addguardsc", "addguards2", "addguards2c"
@@ -40,12 +45,12 @@ commands = [
 sh('mkdir bin || true')
 
 for cmd in commands:
-  luajit = False
+  use_luajit = False
   if cmd.startswith("c"):
-    luajit = True
+    use_luajit = True
     lua = cmd[1:] + ".lua"
   elif cmd.endswith("c"):
-    luajit = True
+    use_luajit = True
     if cmd == "addguards2c":
       lua = cmd + ".lua"
     else:
@@ -57,7 +62,7 @@ for cmd in commands:
     cmdfile.write("#!/bin/sh\n")
     # So that we know where we are.
     cmdfile.write("export WARD='" + root + "'\n")
-    if luajit:
+    if have_luajit and use_luajit:
       path = root + "/luajit/bin/luajit"
     else:
       path = root + "/lua/bin/lua"
