@@ -35,6 +35,8 @@ if luajit:
   luapath = prefix + "/bin/luajit"
 else:
   luapath = prefix + "/bin/lua"
+  if cygwin:
+    luapath += ".exe"
 
 if not luajit:
   if not os.path.exists(luapath):

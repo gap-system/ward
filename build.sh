@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/bin/sh
 "exec" "python" "$0" "$@"
 
 import sys, os, shutil
@@ -27,14 +27,17 @@ sh("cp -pRf ext build")
 sh('scons/scons -j 4 -C build/lua-5.1.5 prefix="'+root+'/lua" install')
 
 # Build and install LuaJIT
-sh('make -j 4 -C build/LuaJIT-2.0.0 PREFIX="'+root+'/luajit" install')
-if sys.platform.startswith("cygwin"):
-  shutil.copy2("build/LuaJIT-2.0.0/src/cyglua51.dll",
-      "luajit/bin/")
+have_luajit = \
+  sh('make -j 4 -C build/LuaJIT-2.0.0 PREFIX="'+root+'/luajit" install')
+if have_luajit:
+  if sys.platform.startswith("cygwin"):
+    shutil.copy2("build/LuaJIT-2.0.0/src/cyglua51.dll",
+	"luajit/bin/")
 
 # Build and install lpeg for both Lua and LuaJIT.
 sh('scons/scons -j 4 -C build/lpeg-0.11 prefix="'+root+'/lua" install')
-have_luajit = trysh('scons/scons -j 4 -C build/lpeg-0.11 luajit=yes prefix="'+root+'/luajit" install')
+if have_luajit:
+  sh('scons/scons -j 4 -C build/lpeg-0.11 luajit=yes prefix="'+root+'/luajit" install')
   
 
 commands = [
