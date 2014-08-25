@@ -45,7 +45,8 @@ commands = [
 ]
 
 # If the directory exists, avoid aborting.
-sh('mkdir bin || true')
+try: os.mkdir("bin")
+except: pass
 
 for cmd in commands:
   use_luajit = False
