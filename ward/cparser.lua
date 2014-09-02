@@ -534,12 +534,9 @@ local function build_for_stmt(init, cond, step, body)
   return init_node, exit_node
 end
 
-local function build_compound_stmt(decls, stmts)
+local function build_compound_stmt_part(decls, stmts)
   local first, last
   local head_node = make_node()
-  if #stmts == 0 and #decls == 0 then
-    return head_node, head_node
-  end
   local save_vars = nil
   if #decls then
     save_vars = clone(local_variables)
@@ -595,6 +592,33 @@ local function build_compound_stmt(decls, stmts)
   end
   connect(head_node, first)
   return head_node, last
+end
+
+local function build_compound_stmt(decls_and_stmts)
+  local first, last, start_iter
+  if #decls_and_stmts == 1 then
+    if #(decls_and_stmts[1]) == 0 then
+      local head_node = make_node()
+      return head_node, head_node
+    else
+      return build_compound_stmt_part({}, decls_and_stmts[1])
+    end
+  end
+  if #(decls_and_stmts[1]) == 0 then
+    first, last = build_compound_stmt_part(decls_and_stmts[2],
+      decls_and_stmts[3])
+    start_iter = 4
+  else
+    first, last = build_compound_stmt_part({}, decls_and_stmts[1])
+    start_iter = 2
+  end
+  for i = start_iter, #decls_and_stmts, 2 do
+    local first_iter, last_iter =
+      build_compound_stmt_part(decls_and_stmts[i], decls_and_stmts[i+1])
+    connect(last, first_iter)
+    last = last_iter
+  end
+  return first, last
 end
 
 local function build_switch_stmt(expr, body)
@@ -988,42 +1012,45 @@ local grammar = pattern {
     end),
   compound_statement = action(action(pattern "{", function(str, pos)
       return pos, pos-1
-    end) * sp * aggregate(action(rule "variable_declaration" * sp,
-      function(str, pos, declarations)
-        local local_declarations = { }
-        for _, declaration in ipairs(declarations) do
-	  local name, type, vpos, value = unpack(declaration)
-	  local storage = declaration[5]
-	  if type:is_function() then
-	    local funcdef = storage
-	    funcdef.type = type.result_type
-	    funcdef.arg_types = type.arg_types
-	    funcdef.name = name
-	    funcdef.filename = source_file_name
-	    funcdef.graph = nil
-	    if storage.static then
-	      if not static_functions[name] then
-	        static_functions[name] = funcdef
+    end) * sp *
+    aggregate(
+      aggregate((rule "statement" * sp) ^ 0) *
+      (aggregate(action(rule "variable_declaration" * sp,
+	function(str, pos, declarations)
+	  local local_declarations = { }
+	  for _, declaration in ipairs(declarations) do
+	    local name, type, vpos, value = unpack(declaration)
+	    local storage = declaration[5]
+	    if type:is_function() then
+	      local funcdef = storage
+	      funcdef.type = type.result_type
+	      funcdef.arg_types = type.arg_types
+	      funcdef.name = name
+	      funcdef.filename = source_file_name
+	      funcdef.graph = nil
+	      if storage.static then
+		if not static_functions[name] then
+		  static_functions[name] = funcdef
+		end
+	      else
+		if not global_functions[name] then
+		  global_functions[name] = funcdef
+		end
 	      end
 	    else
-	      if not global_functions[name] then
-	        global_functions[name] = funcdef
+	      if storage.extern then
+		global_variables[name] = type
+	      else
+		push(local_declarations, declaration);
 	      end
-	    end
-	  else
-	    if storage.extern then
-	      global_variables[name] = type
-	    else
-	      push(local_declarations, declaration);
 	    end
 	  end
-	end
-	return pos, local_declarations
-      end) ^ 0) *
-    aggregate((rule "statement" * sp) ^ 0) *
-    pattern "}" * position(),
-    function(str, pos, start, decls, stmts, finish)
-      return pos, { build_compound_stmt, start, finish, decls, stmts }
+	  return pos, local_declarations
+	end) ^ 1) *
+      aggregate((rule "statement" * sp) ^ 0)) ^ 0
+    ) * pattern "}" * position(),
+    function(str, pos, start, decls_and_stmts, finish)
+      return pos, { build_compound_stmt, start, finish, decls_and_stmts }
     end),
   for_statement = action(keyword_pos "for" * sp * pattern "(" * sp *
     ((expression + value(nil)) * sp) * pattern ";" * sp *
