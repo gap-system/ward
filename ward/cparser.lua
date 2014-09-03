@@ -183,6 +183,14 @@ local ident_or_type = action(raw_ident, function(s, p, id)
 end)
 
 
+local pos_ident_or_type = action(raw_ident, function(s, p, id)
+  if is_keyword[id] then
+    return nil
+  end
+  return p, id, p-#id
+end)
+
+
 local type_name = action(raw_ident, function(s, p, id)
   if not is_keyword[id] and typedefs[id] then
     return p, id
@@ -804,7 +812,7 @@ local grammar = pattern {
         push(c, "*")
 	return p, c
       end) +
-    action((rule "restrict" * sp)^-1 * aggregate(pos_ident) *
+    action((rule "restrict" * sp)^-1 * aggregate(pos_ident_or_type) *
       rule "type_postfix", build_type_postfix)+
     action(rule "const_or_volatile_prefix" * rule "type_declaration",
       function(s, p, c)
