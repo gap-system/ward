@@ -24,7 +24,11 @@ preprocessor_options = {
   "-I.",
   "-Iarch",
   "-D__extension__=",
-  "-D__attribute__(x)="
+  "-D__attribute__(x)=",
+  -- TODO: The following is a workaround around __typeof() occurring
+  -- in Linux header files. The correct solution is to properly deal
+  -- with typeof() and __typeof() expressions.
+  "-D__typeof(x)=int"
 }
 
 local R, W = "R", "W"
