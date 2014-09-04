@@ -1109,7 +1109,8 @@ local grammar = pattern {
       end),
   asm_register = string_literal * sp * pattern "(" * sp *
     rule "expression" * sp * ")",
-  asm_registers = sp * (rule "asm_register" * sp)^0,
+  asm_registers = sp * (rule "asm_register" * sp *
+    (pattern "," * sp * rule "asm_register" * sp) ^ 0)^-1,
   opt_asm_args = pattern ":" * rule "asm_registers" * (pattern ":" *
     rule "asm_registers" * (pattern ":" * (sp * string_constant)^-1)^-1)^-1,
   asm_statement = (keyword_pos "asm" + keyword "__asm__" + keyword "__asm") *
