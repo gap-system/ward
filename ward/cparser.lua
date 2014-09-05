@@ -2,6 +2,7 @@
 
 local pattern = lpeg.P -- match a literal
 local range = lpeg.R -- match a range of characters
+local charset = lpeg.S -- match a set of characters
 local rule = lpeg.V -- match a non-terminal in a grammar
 local error_pos = 0
 local function match(pattern, string)
@@ -217,13 +218,13 @@ local comment = pattern("/*") * (1-pattern("*/"))^0 * pattern("*/")
 local integer_constant =
   (pattern "0x" * hex_digit^1 +
   leading_digit * digit^0 +
-  pattern "0" * octal_digit^0) * range("LL", "UU")^0
+  pattern "0" * octal_digit^0) * charset("luLU")^0
 local string_constant = string_literal * (sp * string_literal)^0
 local float_constant =
   (digit^1 * pattern "." * digit^0 +
   pattern "." * digit^1) * ((pattern "e" + pattern "E") *
   (pattern "-" + pattern "+")^-1 * digit^1)^-1
-  * (pattern "L" + pattern "l" + pattern "F" + pattern "f")^-1
+  * charset("lfLF")^-1
 local constant = float_constant + integer_constant
 
 local attribute_arg = raw_ident + string_literal + integer_constant
