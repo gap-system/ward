@@ -950,7 +950,9 @@ local grammar = pattern {
       return pos, new(ExprVar, pos-#id, id)
     end) +
     constant * value(new(ExprConstant))+
-    pattern "(" * sp * rule "expression" * sp * pattern ")" +
+    pattern "(" * sp *
+      (rule "expression" + rule "stmt_expression") *
+       sp * pattern ")" +
     string_constant * value(new(ExprConstant))+
     char_literal * value(new(ExprConstant))+
     rule "aggregate_expression"+
@@ -961,6 +963,10 @@ local grammar = pattern {
       (pattern ",")^-1 * sp * pattern "}", function(str, pos)
         return pos, new(ExprConstant)
       end),
+  stmt_expression =
+    action(rule "compound_statement", function(str, pos)
+      return pos, new(ExprConstant)
+    end),
   postfix =
     action(pattern "(" * sp * rule "actual_arguments" * sp * pattern ")",
       function(str, pos, arglist)
