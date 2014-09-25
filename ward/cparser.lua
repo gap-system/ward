@@ -138,6 +138,7 @@ local keywords = {
   'int', 'switch', 'double', 'long', 'typedef', 'else', 'register',
   'union', '__asm', '__asm__', '__thread', '__builtin_va_list', '__inline__',
   '__builtin_va_arg', '__extension__', '__const', '__restrict', '__volatile__',
+  '__signed', '__unsigned',
 }
 
 local is_keyword = { }
@@ -748,6 +749,8 @@ local grammar = pattern {
     rule "integral_type" +
     keyword "unsigned" * value(type_int) +
     keyword "signed" * value(type_int) +
+    keyword "__unsigned" * value(type_int) +
+    keyword "__signed" * value(type_int) +
     keyword "struct" * sp * rule "record_type" +
     keyword "union" * sp * rule "record_type" +
     rule "enum_type" +
@@ -768,6 +771,8 @@ local grammar = pattern {
     keyword "long" * value(type_int) +
     keyword "signed" * sp * rule "integral_type" +
     keyword "unsigned" * sp * rule "integral_type" +
+    keyword "__signed" * sp * rule "integral_type" +
+    keyword "__unsigned" * sp * rule "integral_type" +
     keyword "_Bool" * value(type_int),
   enum_item = ident * (sp * "=" * sp * rule "expression")^-1,
   enum_list = rule "enum_item" *
