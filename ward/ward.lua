@@ -13,6 +13,7 @@ options = {
   pass_count = 2,
   parse_only = false,
   verbose = true,
+  debug = false,
 }
 
 local i = 1
@@ -50,6 +51,8 @@ while i <= #arg do
       options.parse_only = true
     elseif argument == "-verbose" then
       options.verbose = true
+    elseif argument == "-debug" then
+      options.debug = true
     elseif argument == "-terse" then
       options.verbose = false
     else

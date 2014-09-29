@@ -87,9 +87,7 @@ function shell_escape(str)
     return str
   else
     return string.gsub(str, "[^%.%=%-%s%w_/]", function(s)
-      if s == "\\" then
-	return "\\\\"
-      elseif s == "'" then
+      if s == "'" then
         return [["'"]]
       else
         return "'" .. s .. "'"
@@ -99,7 +97,15 @@ function shell_escape(str)
 end
 
 function read_from_command(command)
-  local pipe = io.popen(table.concat(map(command, shell_escape), " "), "r")
+  local cmd = table.concat(map(command, shell_escape), " ")
+  if options.debug then
+    printerr([[popen: "]] .. cmd .. [["]])
+  end
+  local pipe = io.popen(cmd, "r")
+  if not pipe and options.debug then
+    printerr("popen: command failed")
+    printerr("PATH: ".. os.getenv("PATH"))
+  end
   local result = pipe:read("*a")
   --print(table.concat(map(command, shell_escape), " "))
   pipe:close()
