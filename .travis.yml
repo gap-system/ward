@@ -9,6 +9,4 @@ branches:
   only:
     - master
 script:
-  - git clone --depth=1 https://github.com/gap-system/ward 
-  -  cd ward
   - ./build.sh
