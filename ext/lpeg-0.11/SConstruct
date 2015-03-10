@@ -21,7 +21,7 @@ source = glob.glob(sourcepath + "/*.c")
 
 modname += ".so"
 
-mod = DefaultEnvironment(variables=vars, PATH=os.environ["PATH"])
+mod = DefaultEnvironment(variables=vars, ENV={"PATH": os.environ["PATH"]})
 prefix = mod["prefix"]
 luajit = mod["luajit"]
 

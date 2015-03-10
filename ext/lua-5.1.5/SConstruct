@@ -24,7 +24,7 @@ except:
 
 # Create the basic compilation environment.
 
-Lua = DefaultEnvironment(variables=vars, PATH=os.environ["PATH"])
+Lua = DefaultEnvironment(variables=vars, ENV={"PATH": os.environ["PATH"]})
 Help(vars.GenerateHelpText(Lua))
 
 for opt in ["CC", "CFLAGS", "CXX", "CXXFLAGS"]:
