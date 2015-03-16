@@ -1,5 +1,5 @@
 #!/bin/sh
-"exec" "python" "$0" "$@"
+"exec" "tools/run-python" "$0" "$@"
 
 import sys, os, shutil
 
@@ -24,7 +24,7 @@ sh("rm -rf build")
 sh("cp -pRf ext build")
 
 # Build and install Lua
-sh('scons/scons -j 4 -C build/lua-5.1.5 prefix="'+root+'/lua" install')
+sh('tools/run-python scons/scons -j 4 -C build/lua-5.1.5 prefix="'+root+'/lua" install')
 
 # Build and install LuaJIT
 have_luajit = \
@@ -35,9 +35,9 @@ if have_luajit:
 	"luajit/bin/")
 
 # Build and install lpeg for both Lua and LuaJIT.
-sh('scons/scons -j 4 -C build/lpeg-0.11 prefix="'+root+'/lua" install')
+sh('tools/run-python scons/scons -j 4 -C build/lpeg-0.11 prefix="'+root+'/lua" install')
 if have_luajit:
-  sh('scons/scons -j 4 -C build/lpeg-0.11 luajit=yes prefix="'+root+'/luajit" install')
+  sh('tools/run-python scons/scons -j 4 -C build/lpeg-0.11 luajit=yes prefix="'+root+'/luajit" install')
   
 
 commands = [
