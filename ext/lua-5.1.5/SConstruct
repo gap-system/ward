@@ -15,10 +15,11 @@ vars.Add(BoolVariable("fixluaconf", "Rename luaconf.h to luaconf.h.in", True))
 
 luaversion = 501 # default to 5.1 in case something breaks
 try:
-  with open("src/lua.h") as lua_h:
-    lua_h_contents = lua_h.read()
-    match = re.search("#define\\s+LUA_VERSION_NUM\\s+(\\d+)", lua_h_contents)
-    luaversion = int(match.group(1))
+  lua_h = open("src/lua.h")
+  lua_h_contents = lua_h.read()
+  match = re.search("#define\\s+LUA_VERSION_NUM\\s+(\\d+)", lua_h_contents)
+  luaversion = int(match.group(1))
+  lua_h.close()
 except:
   pass
 
@@ -122,13 +123,15 @@ if os.path.exists("src/luaconf.h") and not GetOption("clean"):
     Exit(1)
 
 def MakeLuaConf(target, source, env):
-  with open(str(source[0])) as input:
-    luaconf = input.read()
+  input = open(str(source[0]))
+  luaconf = input.read()
+  input.close()
   luaconf = re.sub("#define\\s+LUA_ROOT\\s.*",
                    "#define LUA_ROOT \"" + prefix + "\"",
 		   luaconf)
-  with open(str(target[0]), "w") as output:
-    output.write(luaconf)
+  output = open(str(target[0]), "w")
+  output.write(luaconf)
+  output.close()
   return None
 
 Lua.Command("include/luaconf.h", "src/luaconf.h.in", MakeLuaConf)

@@ -61,18 +61,19 @@ for cmd in commands:
       lua = cmd[:-1] + ".lua"
   else:
     lua = cmd + ".lua"
-  with open("bin/" + cmd, "w") as cmdfile:
-    # Will be a shell file.
-    cmdfile.write("#!/bin/sh\n")
-    # So that we know where we are.
-    cmdfile.write("export WARD='" + root + "'\n")
-    if have_luajit and use_luajit:
-      path = root + "/luajit/bin/luajit"
-    else:
-      path = root + "/lua/bin/lua"
-    # Call Lua/LuaJIT with an expanded path and the lua
-    # file as an argument.
-    cmdfile.write(path + " -e 'package.path = \"" +
-      root + "/ward/?.lua;\" .. package.path' " +
-      "'" + root + "/ward/" + lua + "' \"$@\"\n")
+  cmdfile = open("bin/" + cmd, "w")
+  # Will be a shell file.
+  cmdfile.write("#!/bin/sh\n")
+  # So that we know where we are.
+  cmdfile.write("export WARD='" + root + "'\n")
+  if have_luajit and use_luajit:
+    path = root + "/luajit/bin/luajit"
+  else:
+    path = root + "/lua/bin/lua"
+  # Call Lua/LuaJIT with an expanded path and the lua
+  # file as an argument.
+  cmdfile.write(path + " -e 'package.path = \"" +
+    root + "/ward/?.lua;\" .. package.path' " +
+    "'" + root + "/ward/" + lua + "' \"$@\"\n")
+  cmdfile.close()
   os.chmod("bin/" + cmd, 0755)
