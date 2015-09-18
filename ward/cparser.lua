@@ -997,7 +997,7 @@ local grammar = pattern {
       function(str, pos)
         return pos, "x--", ""
       end),
-  vararg_expr = action(keyword "__builtin_va_arg" * sp * pattern "(" *
+  vararg_expr = action(keyword "__builtin_va_arg" * sp * pattern "(" * sp *
     rule "expression" * sp * pattern "," * sp * rule "type_spec" * sp *
     pattern ")", function(str, pos, expr, decl)
       -- TODO: better approximation of this as *((type *)va)++?
