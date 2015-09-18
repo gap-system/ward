@@ -138,7 +138,7 @@ local keywords = {
   'int', 'switch', 'double', 'long', 'typedef', 'else', 'register',
   'union', '__asm', '__asm__', '__thread', '__builtin_va_list', '__inline__',
   '__builtin_va_arg', '__extension__', '__const', '__restrict', '__volatile__',
-  '__signed', '__unsigned',
+  '__signed', '__unsigned', '_Alignof',
 }
 
 local is_keyword = { }
@@ -943,6 +943,10 @@ local grammar = pattern {
       end)+
     action(keyword "sizeof" * sp * rule "unary_expression",
       function(str, pos)
+        return pos, new(ExprConstant)
+      end)+
+    action(keyword "_Alignof" * sp * pattern "(" * rule "type_spec" *
+      pattern ")", function(str, pos)
         return pos, new(ExprConstant)
       end),
   postfix_expression =
