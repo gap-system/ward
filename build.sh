@@ -28,7 +28,7 @@ sh('tools/run-python scons/scons -j 4 -C build/lua-5.1.5 prefix="'+root+'/lua" i
 
 # Build and install LuaJIT
 have_luajit = \
-  sh('make -j 4 -C build/LuaJIT-2.0.0 PREFIX="'+root+'/luajit" install')
+  trysh('make -j 4 -C build/LuaJIT-2.0.0 PREFIX="'+root+'/luajit" install')
 if have_luajit:
   if sys.platform.startswith("cygwin"):
     shutil.copy2("build/LuaJIT-2.0.0/src/cyglua51.dll",
