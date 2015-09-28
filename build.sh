@@ -67,7 +67,7 @@ for cmd in commands:
   # So that we know where we are.
   cmdfile.write("export WARD='" + root + "'\n")
   if have_luajit and use_luajit:
-    path = root + "/luajit/bin/luajit"
+    path = root + "/luajit/bin/luajit -joff"
   else:
     path = root + "/lua/bin/lua"
   # Call Lua/LuaJIT with an expanded path and the lua
