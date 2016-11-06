@@ -32,6 +32,12 @@ while i <= #arg do
       if options.pass_count == 0 then
         system_error("The number of passes must be at least 1")
       end
+    elseif argument == "-cpp" then
+      while i <= #arg and arg[i] ~= "--" do
+        push(preprocessor_options, arg[i])
+        i = i + 1
+      end
+      if arg[i] == "--" then i = i + 1 end
     elseif argument == "-I" then
       local incdir = arg[i]
       i = i + 1
