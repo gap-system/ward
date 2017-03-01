@@ -22,8 +22,9 @@ if string.sub(file, -2, -1) == ".c" then
     io.flush()
     os.execute(ward .. "/bin/addguards " .. guard .. " " .. file)
   else
-    io.write("/* ERROR: Ward failed to parse C source */\n")
-    catfile(file)
+    io.stderr:write("ERROR: Ward failed to parse C source\n")
+    os.remove(guard)
+    os.exit(1)
   end
   os.remove(guard)
 else
