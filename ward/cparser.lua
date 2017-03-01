@@ -1344,10 +1344,10 @@ function show_error(input, mapping, pos, message)
   local sourcefile, sourceline, sourcecol, line =
     find_source_position(input, pos, mapping)
   if message then
-    io.stderr:write(string.format("%s:%d,%d:%s\n", sourcefile, sourceline, sourcecol,
+    io.stderr:write(string.format("%s:%d:%d: %s\n", sourcefile, sourceline, sourcecol,
       message))
   else
-    io.stderr:write(string.format("%s:%d,%d\n", sourcefile, sourceline, sourcecol))
+    io.stderr:write(string.format("%s:%d:%d\n", sourcefile, sourceline, sourcecol))
   end
   if options.verbose then
     line = string.gsub(line, "[\r\n]", "")
