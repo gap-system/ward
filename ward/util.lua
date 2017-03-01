@@ -63,12 +63,12 @@ push = table.insert
 pop = table.remove
 
 function fatal_error(pos, message)
-  print(message)
+  io.stderr:write(message .. "\n")
   os.exit(1)
 end
 
 function system_error(message)
-  print(message)
+  io.stderr:write(message .. "\n")
   os.exit(1)
 end
 
