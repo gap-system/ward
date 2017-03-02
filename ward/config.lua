@@ -21,8 +21,6 @@ preprocessor_defines = {
 }
 
 preprocessor_options = {
-  "-I.",
-  "-Iarch",
   "-D__extension__=",
   "-D__attribute__(x)=",
   -- Ignore C11 annotations.
