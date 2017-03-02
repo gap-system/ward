@@ -1,3 +1,5 @@
+require "util"
+
 function catfile(file)
   local fp = io.open(file)
   local contents = fp:read("*a")
@@ -6,7 +8,7 @@ function catfile(file)
 end
 
 ward = os.getenv("WARD")
-args = table.concat({...}, " ")
+args = table.concat(map({...}, shell_escape), " ")
 argtable = {...}
 file = argtable[#argtable]
 if string.sub(file, -2, -1) == ".c" then
