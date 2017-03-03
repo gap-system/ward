@@ -131,14 +131,15 @@ local storage_classifier_table = {
 }
 
 local keywords = {
-  'asm', 'auto', 'enum', 'restrict', 'unsigned', 'break', 'extern',
-  'return', 'void', 'case', 'float', 'short', 'volatile', 'char', 'for',
-  'signed', 'while', 'const', 'goto', 'sizeof', '_Bool', 'continue', 'if',
-  'static', '_Complex', 'default', 'inline', 'struct', '_Imaginary', 'do',
-  'int', 'switch', 'double', 'long', 'typedef', 'else', 'register',
-  'union', '__asm', '__asm__', '__thread', '__builtin_va_list', '__inline__',
-  '__builtin_va_arg', '__extension__', '__const', '__restrict', '__volatile__',
-  '__signed', '__unsigned', '_Alignof',
+  "asm", "auto", "enum", "restrict", "unsigned", "break", "extern",
+  "return", "void", "case", "float", "short", "volatile", "char", "for",
+  "signed", "while", "const", "goto", "sizeof", "_Bool", "continue", "if",
+  "static", "_Complex", "default", "inline", "struct", "_Imaginary", "do",
+  "int", "switch", "double", "long", "typedef", "else", "register",
+  "union", "__asm", "__asm__", "__thread", "__builtin_va_list", "__inline__",
+  "__builtin_va_arg", "__extension__", "__const", "__restrict", "__volatile__",
+  "__signed", "__unsigned", "_Alignof", "_Noreturn", "_Nonnull", "_Nullable",
+  "_Null_unspecified",
 }
 
 local is_keyword = { }
@@ -804,23 +805,30 @@ local grammar = pattern {
     keyword "__extension__" * sp * rule "record_member",
   type_spec = action(rule "type_prefix" * sp * rule "type_declaration",
     build_typed_declaration),
-  type_prefix = rule "const_or_volatile" * rule "basetype",
-  const_or_volatile_prefix = (keyword "const" * sp + keyword "volatile" * sp
-    + keyword "__const" * sp),
-  const_or_volatile = (rule "const_or_volatile_prefix")^0,
+  type_prefix = rule "type_access_qualifier" * rule "basetype",
+  type_access_qualifier_prefix = (
+    keyword "const" * sp +
+    keyword "volatile" * sp +
+    keyword "__const" * sp +
+    keyword "_Noreturn" * sp +
+    keyword "_Nonnull" * sp +
+    keyword "_Nullable" * sp +
+    keyword "_Null_unspecified" * sp
+  ),
+  type_access_qualifier = (rule "type_access_qualifier_prefix")^0,
   restrict = (keyword "restrict" + keyword "__restrict"),
   type_declaration =
     action(pattern "(" * sp * rule "type_declaration" * sp * pattern ")" *
       rule "type_postfix", build_type_postfix) +
-    action(rule "const_or_volatile" * sp * (pattern "*" + pattern "^") * sp *
-           rule "type_declaration",
+    action(rule "type_access_qualifier" * sp *
+           (pattern "*" + pattern "^") * sp * rule "type_declaration",
       function(s, p, c)
         push(c, "*")
 	return p, c
       end) +
     action((rule "restrict" * sp)^-1 * aggregate(pos_ident_or_type) *
       rule "type_postfix", build_type_postfix)+
-    action(rule "const_or_volatile_prefix" * rule "type_declaration",
+    action(rule "type_access_qualifier_prefix" * rule "type_declaration",
       function(s, p, c)
         return p, c
       end)+
@@ -1165,7 +1173,7 @@ local grammar = pattern {
     rule "opt_asm_declaration" * (sp * attributes)^-1 * sp * pattern ";",
   function_definition =
     action(rule "storage_classifiers" *
-      rule "const_or_volatile" * rule "basetype" *
+      rule "type_access_qualifier" * rule "basetype" *
       aggregate((sp * capture(pattern "*"))^0) * sp *
       (attributes * sp)^-1 * ident * sp *
       rule "function_arguments" * sp * rule "compound_statement" *

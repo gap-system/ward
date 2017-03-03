@@ -24,7 +24,6 @@ preprocessor_options = {
   "-D__extension__=",
   "-D__attribute__(x)=",
   -- Ignore C11 annotations.
-  "-D_Noreturn=",
   "-D_Alignas(x)=",
   -- TODO: The following is a workaround around __typeof() occurring
   -- in Linux header files. The correct solution is to properly deal
