@@ -200,6 +200,7 @@ local comment_line = space ^ 0 * pattern "/*" * (1-#pattern "*/")^0 * pattern "*
 
 local lineno = 1
 local defined = { }
+print("#line 1 \"" .. infile .. "\"")
 for line in io.lines(infile) do
   local suppress = false
   local spaces = match(start_spaces, line)
@@ -219,6 +220,7 @@ for line in io.lines(infile) do
 	else
 	  print(spaces .. "ReadGuard(" .. var .. ");")
 	end
+	print("#line " .. lineno .. " \"" .. infile .. "\"")
       end
     end
   end
@@ -232,6 +234,7 @@ for line in io.lines(infile) do
 	  else
 	    print(spaces .. "ReadGuard(" .. var .. "),")
 	  end
+	  print("#line " .. lineno .. " \"" .. infile .. "\"")
 	end
       end
     elseif match(macro_or_expr, line) then
@@ -243,6 +246,7 @@ for line in io.lines(infile) do
 	  else
 	    print(spaces .. "ReadGuard(" .. var .. ");")
 	  end
+	  print("#line " .. lineno .. " \"" .. infile .. "\"")
 	end
       end
       print(line)
