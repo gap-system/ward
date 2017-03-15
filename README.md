@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/gap-system/ward.svg?branch=master)](https://travis-ci.org/gap-system/ward) 
+
 # Ward
 
 Ward is a tool used for building HPC-GAP. It analyzes C source code and
