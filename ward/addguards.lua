@@ -165,12 +165,16 @@ local inline_suggestions = inline_suggestions[infile] or { }
 
 local start_spaces = capture((pattern " " + pattern "\t")^0)
 local space = (pattern " " + pattern "\t")
-local non_alpha = capture((1-range("az", "AZ", "__"))^1)
+local stringchar = (1-pattern("\\")) + (pattern("\\") * pattern(1))
+local string_literal = pattern '"' * (stringchar-pattern('"'))^0 * pattern '"'
+local char_literal = pattern "'" *(stringchar-pattern("'"))^0 * pattern "'"
+local lit = capture(string_literal + char_literal)
+local non_alpha = capture((1-range("az", "AZ", "__")))
 local alpha = range("az", "AZ", "__")
 local digit = range("09")
 local name = capture(alpha * (alpha + digit)^0)
-local var_splitter = aggregate(non_alpha ^ 0 *
-  (name * non_alpha) ^ 0 * name ^ 0)
+local var_splitter = aggregate((lit+non_alpha) ^ 0 *
+  (name * (lit+non_alpha)^1) ^ 0 * name ^ 0)
 
 local function replace_var(line, var, guard)
   local vars = match(var_splitter, line)
