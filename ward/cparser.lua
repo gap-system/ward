@@ -139,7 +139,7 @@ local keywords = {
   "union", "__asm", "__asm__", "__thread", "__builtin_va_list", "__inline__",
   "__builtin_va_arg", "__extension__", "__const", "__restrict", "__volatile__",
   "__signed", "__unsigned", "_Alignof", "_Noreturn", "_Nonnull", "_Nullable",
-  "_Null_unspecified",
+  "_Null_unspecified","__signed__", 
 }
 
 local is_keyword = { }
@@ -752,6 +752,8 @@ local grammar = pattern {
     keyword "signed" * value(type_int) +
     keyword "__unsigned" * value(type_int) +
     keyword "__signed" * value(type_int) +
+    keyword "__signed__" * value(type_int) +
+    -- GCC extension; required by some system headers
     keyword "struct" * sp * rule "record_type" +
     keyword "union" * sp * rule "record_type" +
     rule "enum_type" +
@@ -774,6 +776,8 @@ local grammar = pattern {
     keyword "unsigned" * sp * rule "integral_type" +
     keyword "__signed" * sp * rule "integral_type" +
     keyword "__unsigned" * sp * rule "integral_type" +
+    keyword "__signed__" * sp * rule "integral_type" +
+    -- GCC extension; required by some system headers
     keyword "_Bool" * value(type_int),
   enum_item = ident * (sp * "=" * sp * rule "expression")^-1,
   enum_list = rule "enum_item" *
