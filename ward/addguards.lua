@@ -256,6 +256,7 @@ for line in io.lines(infile) do
       print(line)
       suppress = true
       print(spaces .. "}")
+      print("#line " .. lineno+1 .. " \"" .. infile .. "\"")
     elseif match(else_if, line) then
       local m = match(else_if, line)
       local out = m[1]
