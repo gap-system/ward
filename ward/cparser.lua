@@ -1088,8 +1088,16 @@ local grammar = pattern {
     function(str, pos, start, decls_and_stmts, finish)
       return pos, { build_compound_stmt, start, finish, decls_and_stmts }
     end),
+  -- Warning: the following rule actually ignores the initialization
+  -- part of a for statement if it includes a type declaration. The
+  -- implied assumption is that for variables should not actually be of
+  -- type Obj or Bag, as we may not be able to properly generate guards
+  -- for such variables in the for header, anyway. Ideally, we should
+  -- issue a warning if we see one.
+  for_init_decl = action(rule "type_prefix" * sp *
+    rule "type_declarations_init", discard) * value(nil),
   for_statement = action(keyword_pos "for" * sp * pattern "(" * sp *
-    ((expression + value(nil)) * sp) * pattern ";" * sp *
+    ((expression + rule "for_init_decl" + value(nil)) * sp) * pattern ";" * sp *
     ((expression + value(nil)) * sp) * pattern ";" * sp *
     ((expression + value(nil)) * sp) * pattern ")" * sp *
     rule "statement" * position(),
