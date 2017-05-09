@@ -5,6 +5,7 @@ Node = class()
 -- changed: has changed since last iteration
 -- wp, rp: write and read protection
 -- aa: argument alias information
+-- tl: thread-local bags (that do not need protection)
 -- assign: assignment information
 -- writes, reads: which variables are being read/written
 -- pred, succ: lists of predecessors and successors
@@ -83,6 +84,9 @@ local function assignments(input, node)
   end
   return output
 end
+
+-- The trans_?? functions transfer semantic information relating
+-- to rp, wp, and tl properties from node inputs to node outputs.
 
 local function trans_rp(input, node)
   local rg = node.rg
@@ -175,6 +179,11 @@ local function trans_aa(input, node)
   end
   return result
 end
+
+-- dataflow analysis relies on a transfer and a join function. It computes
+-- the smallest fixpoint such that for each node, the transfer function
+-- maps input to output values and the join function maps the outputs of
+-- all predecessors of a node to its input.
 
 local function forward_dataflow(graph, input, output, trans, join, changed_from)
   local nodes = graph.nodes
