@@ -16,7 +16,10 @@ options = {
   debug = false,
 }
 
-local ccprog = "cc"
+local cppprog = os.getenv("CPP")
+if cppprog == nil then
+ cppprog = "cc -E"
+end
 
 local i = 1
 while i <= #arg do
@@ -47,9 +50,6 @@ while i <= #arg do
        system_error "The -I option requires a directory argument"
       end
       push(preprocessor_options, "-I"..incdir)
-    elseif argument == "-cc" then
-      ccprog = arg[i]
-      i = i + 1
     elseif string.sub(argument, 1, 2) == "-I" then
       push(preprocessor_options, argument)
     elseif string.sub(argument, 1, 2) == "-D" then
@@ -70,7 +70,7 @@ while i <= #arg do
       system_error("Unknown option '" .. argument .. "'")
     end
   else
-    local command = { ccprog, "-E" }
+    local command = { cppprog }
     for _, opt in ipairs(preprocessor_options) do
       push(command, opt)
     end
