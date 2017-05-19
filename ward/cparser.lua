@@ -1088,12 +1088,15 @@ local grammar = pattern {
     function(str, pos, start, decls_and_stmts, finish)
       return pos, { build_compound_stmt, start, finish, decls_and_stmts }
     end),
-  -- Warning: the following rule actually ignores the initialization
-  -- part of a for statement if it includes a type declaration. The
-  -- implied assumption is that for variables should not actually be of
-  -- type Obj or Bag, as we may not be able to properly generate guards
-  -- for such variables in the for header, anyway. Ideally, we should
-  -- issue a warning if we see one.
+  -- Warning: The following hack allows ward to parse C99 'for' loops which declare
+  -- variables in their init section, like in this snippet:
+  --   for (int i = 0; i < n; i++) { ... }
+  -- To this end, the following rule actually ignores the initialization part
+  -- of a 'for' statement if it includes a type declaration. The implied
+  -- assumption is that 'for' variables should not actually be of type Obj or
+  -- Bag, as we may not be able to properly generate guards for such
+  -- variables in the 'for' header, anyway.
+  -- FIXME: Ideally, we should raise an error if we see a Bag or Obj declaration.
   for_init_decl = action(rule "type_prefix" * sp *
     rule "type_declarations_init", discard) * value(nil),
   for_statement = action(keyword_pos "for" * sp * pattern "(" * sp *
