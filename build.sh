@@ -67,13 +67,12 @@ for cmd in commands:
   # So that we know where we are.
   cmdfile.write("export WARD='" + root + "'\n")
   if have_luajit and use_luajit:
-    path = root + "/luajit/bin/luajit -joff"
+    path = "$WARD/luajit/bin/luajit -joff"
   else:
-    path = root + "/lua/bin/lua"
+    path = "$WARD/lua/bin/lua"
   # Call Lua/LuaJIT with an expanded path and the lua
   # file as an argument.
-  cmdfile.write(path + " -e 'package.path = \"" +
-    root + "/ward/?.lua;\" .. package.path' " +
-    "'" + root + "/ward/" + lua + "' \"$@\"\n")
+  cmdfile.write(path + " -e \"package.path = \\\"$WARD/ward/?.lua;\\\" .. package.path\" " +
+    "\"$WARD/ward/" + lua + "\" \"$@\"\n")
   cmdfile.close()
   os.chmod("bin/" + cmd, 0755)
