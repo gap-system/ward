@@ -127,6 +127,7 @@ local storage_classifier_table = {
   __inline__ = "inline",
   static = "static",
   __thread = "thread",
+  _Thread_local = "thread",
   __attribute__ = "attribute",
 }
 
@@ -139,7 +140,7 @@ local keywords = {
   "union", "__asm", "__asm__", "__thread", "__builtin_va_list", "__inline__",
   "__builtin_va_arg", "__extension__", "__const", "__restrict", "__volatile__",
   "__signed", "__unsigned", "_Alignof", "_Noreturn", "_Nonnull", "_Nullable",
-  "_Null_unspecified","__signed__", 
+  "_Null_unspecified","__signed__", "_Thread_local"
 }
 
 local is_keyword = { }
@@ -856,7 +857,7 @@ local grammar = pattern {
   type_declaration_init = rule "type_declaration" * rule "opt_asm_declaration" *
     (sp * "=" * sp * rule "init_expression" + value(nil)),
   type_postfix =
-    sp * pattern ":" * sp * integer_constant * value({})+
+    sp * pattern ":" * sp * expression * value({})+
     aggregate((sp * rule "type_postfix_item")^0),
   type_postfix_item =
     pattern "[" * sp * pattern "]" * value("*") +
@@ -878,6 +879,7 @@ local grammar = pattern {
     keyword "__inline__" +
     keyword "__inline" +
     keyword "__thread" +
+    keyword "_Thread_local" +
     keyword "extern" +
     keyword "register" +
     keyword "auto") +
