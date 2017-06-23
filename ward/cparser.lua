@@ -857,7 +857,7 @@ local grammar = pattern {
   type_declaration_init = rule "type_declaration" * rule "opt_asm_declaration" *
     (sp * "=" * sp * rule "init_expression" + value(nil)),
   type_postfix =
-    sp * pattern ":" * sp * expression * value({})+
+    sp * pattern ":" * sp * rule "cond_expression" * value({})+
     aggregate((sp * rule "type_postfix_item")^0),
   type_postfix_item =
     pattern "[" * sp * pattern "]" * value("*") +
