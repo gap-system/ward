@@ -1,8 +1,6 @@
-dist: trusty
-
 os:
   - linux
-#  - osx
+  - osx
 language: c
 compiler:
   - gcc
