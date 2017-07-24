@@ -1,9 +1,11 @@
 /*
-** $Id: lpvm.c,v 1.3 2013/03/21 20:25:12 roberto Exp $
+** $Id: lpvm.c,v 1.9 2016/06/03 20:11:18 roberto Exp $
 ** Copyright 2007, Lua.org & PUC-Rio  (see 'lpeg.html' for license)
 */
 
+#include <limits.h>
 #include <string.h>
+
 
 #include "lua.h"
 #include "lauxlib.h"
@@ -16,9 +18,11 @@
 
 /* initial size for call/backtrack stack */
 #if !defined(INITBACK)
-#define INITBACK	100
+#define INITBACK	MAXBACK
 #endif
 
+
+#define getoffset(p)	(((p) + 1)->offset)
 
 static const Instruction giveup = {{IGiveup, 0, 0}};
 
@@ -41,14 +45,16 @@ typedef struct Stack {
 
 
 /*
-** Double the size of the array of captures
+** Make the size of the array of captures 'cap' twice as large as needed
+** (which is 'captop'). ('n' is the number of new elements.)
 */
-static Capture *doublecap (lua_State *L, Capture *cap, int captop, int ptop) {
+static Capture *doublecap (lua_State *L, Capture *cap, int captop,
+                                         int n, int ptop) {
   Capture *newc;
   if (captop >= INT_MAX/((int)sizeof(Capture) * 2))
     luaL_error(L, "too many captures");
   newc = (Capture *)lua_newuserdata(L, captop * 2 * sizeof(Capture));
-  memcpy(newc, cap, captop * sizeof(Capture));
+  memcpy(newc, cap, (captop - n) * sizeof(Capture));
   lua_replace(L, caplistidx(ptop));
   return newc;
 }
@@ -66,7 +72,7 @@ static Stack *doublestack (lua_State *L, Stack **stacklimit, int ptop) {
   max = lua_tointeger(L, -1);  /* maximum allowed size */
   lua_pop(L, 1);
   if (n >= max)  /* already at maximum size? */
-    luaL_error(L, "too many pending calls/choices");
+    luaL_error(L, "backtrack stack overflow (current limit is %d)", max);
   newn = 2 * n;  /* new size */
   if (newn > max) newn = max;
   newstack = (Stack *)lua_newuserdata(L, newn * sizeof(Stack));
@@ -109,8 +115,8 @@ static int resdyncaptures (lua_State *L, int fr, int curr, int limit) {
 */
 static void adddyncaptures (const char *s, Capture *base, int n, int fd) {
   int i;
-  /* Cgroup capture is already there */
-  assert(base[0].kind == Cgroup && base[0].siz == 0);
+  base[0].kind = Cgroup;  /* create group capture */
+  base[0].siz = 0;
   base[0].idx = 0;  /* make it an anonymous group */
   for (i = 1; i <= n; i++) {  /* add runtime captures */
     base[i].kind = Cruntime;
@@ -153,10 +159,11 @@ const char *match (lua_State *L, const char *o, const char *s, const char *e,
   lua_pushlightuserdata(L, stackbase);
   for (;;) {
 #if defined(DEBUG)
-      printf("s: |%s| stck:%d, dyncaps:%d, caps:%d  ",
-             s, stack - getstackbase(L, ptop), ndyncap, captop);
-      printinst(op, p);
+      printf("-------------------------------------\n");
       printcaplist(capture, capture + captop);
+      printf("s: |%s| stck:%d, dyncaps:%d, caps:%d  ",
+             s, (int)(stack - getstackbase(L, ptop)), ndyncap, captop);
+      printinst(op, p);
 #endif
     assert(stackidx(ptop) + ndyncap == lua_gettop(L) && ndyncap <= captop);
     switch ((Opcode)p->i.code) {
@@ -181,8 +188,8 @@ const char *match (lua_State *L, const char *o, const char *s, const char *e,
         continue;
       }
       case ITestAny: {
-        if (s < e) p++;
-        else p += p->i.offset;
+        if (s < e) p += 2;
+        else p += getoffset(p);
         continue;
       }
       case IChar: {
@@ -191,8 +198,8 @@ const char *match (lua_State *L, const char *o, const char *s, const char *e,
         continue;
       }
       case ITestChar: {
-        if ((byte)*s == p->i.aux && s < e) p++;
-        else p += p->i.offset;
+        if ((byte)*s == p->i.aux && s < e) p += 2;
+        else p += getoffset(p);
         continue;
       }
       case ISet: {
@@ -204,9 +211,9 @@ const char *match (lua_State *L, const char *o, const char *s, const char *e,
       }
       case ITestSet: {
         int c = (byte)*s;
-        if (testchar((p+1)->buff, c) && s < e)
-          p += CHARSETINSTSIZE;
-        else p += p->i.offset;
+        if (testchar((p + 2)->buff, c) && s < e)
+          p += 1 + CHARSETINSTSIZE;
+        else p += getoffset(p);
         continue;
       }
       case IBehind: {
@@ -224,46 +231,46 @@ const char *match (lua_State *L, const char *o, const char *s, const char *e,
         continue;
       }
       case IJmp: {
-        p += p->i.offset;
+        p += getoffset(p);
         continue;
       }
       case IChoice: {
         if (stack == stacklimit)
           stack = doublestack(L, &stacklimit, ptop);
-        stack->p = p + p->i.offset;
+        stack->p = p + getoffset(p);
         stack->s = s;
         stack->caplevel = captop;
         stack++;
-        p++;
+        p += 2;
         continue;
       }
       case ICall: {
         if (stack == stacklimit)
           stack = doublestack(L, &stacklimit, ptop);
         stack->s = NULL;
-        stack->p = p + 1;  /* save return address */
+        stack->p = p + 2;  /* save return address */
         stack++;
-        p += p->i.offset;
+        p += getoffset(p);
         continue;
       }
       case ICommit: {
         assert(stack > getstackbase(L, ptop) && (stack - 1)->s != NULL);
         stack--;
-        p += p->i.offset;
+        p += getoffset(p);
         continue;
       }
       case IPartialCommit: {
         assert(stack > getstackbase(L, ptop) && (stack - 1)->s != NULL);
         (stack - 1)->s = s;
         (stack - 1)->caplevel = captop;
-        p += p->i.offset;
+        p += getoffset(p);
         continue;
       }
       case IBackCommit: {
         assert(stack > getstackbase(L, ptop) && (stack - 1)->s != NULL);
         s = (--stack)->s;
         captop = stack->caplevel;
-        p += p->i.offset;
+        p += getoffset(p);
         continue;
       }
       case IFailTwice:
@@ -280,6 +287,9 @@ const char *match (lua_State *L, const char *o, const char *s, const char *e,
           ndyncap -= removedyncap(L, capture, stack->caplevel, captop);
         captop = stack->caplevel;
         p = stack->p;
+#if defined(DEBUG)
+        printf("**FAIL**\n");
+#endif
         continue;
       }
       case ICloseRunTime: {
@@ -289,16 +299,19 @@ const char *match (lua_State *L, const char *o, const char *s, const char *e,
         cs.s = o; cs.L = L; cs.ocap = capture; cs.ptop = ptop;
         n = runtimecap(&cs, capture + captop, s, &rem);  /* call function */
         captop -= n;  /* remove nested captures */
+        ndyncap -= rem;  /* update number of dynamic captures */
         fr -= rem;  /* 'rem' items were popped from Lua stack */
         res = resdyncaptures(L, fr, s - o, e - o);  /* get result */
         if (res == -1)  /* fail? */
           goto fail;
         s = o + res;  /* else update current position */
         n = lua_gettop(L) - fr + 1;  /* number of new captures */
-        ndyncap += n - rem;  /* update number of dynamic captures */
+        ndyncap += n;  /* update number of dynamic captures */
         if (n > 0) {  /* any new capture? */
+          if (fr + n >= SHRT_MAX)
+            luaL_error(L, "too many results in match-time capture");
           if ((captop += n + 2) >= capsize) {
-            capture = doublecap(L, capture, captop, ptop);
+            capture = doublecap(L, capture, captop, n + 2, ptop);
             capsize = 2 * captop;
           }
           /* add new captures to 'capture' list */
@@ -332,10 +345,10 @@ const char *match (lua_State *L, const char *o, const char *s, const char *e,
         capture[captop].s = s - getoff(p);
         /* goto pushcapture; */
       pushcapture: {
-        capture[captop].idx = p->i.offset;
+        capture[captop].idx = p->i.key;
         capture[captop].kind = getkind(p);
         if (++captop >= capsize) {
-          capture = doublecap(L, capture, captop, ptop);
+          capture = doublecap(L, capture, captop, 0, ptop);
           capsize = 2 * captop;
         }
         p++;

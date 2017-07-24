@@ -1,13 +1,16 @@
 /*
-** $Id: lpprint.c,v 1.4 2013/03/24 13:51:12 roberto Exp $
+** $Id: lpprint.c,v 1.10 2016/09/13 16:06:03 roberto Exp $
 ** Copyright 2007, Lua.org & PUC-Rio  (see 'lpeg.html' for license)
 */
 
 #include <ctype.h>
+#include <limits.h>
 #include <stdio.h>
+
 
 #include "lptypes.h"
 #include "lpprint.h"
+#include "lpcode.h"
 
 
 #if defined(LPEG_DEBUG)
@@ -17,13 +20,6 @@
 ** Printing patterns (for debugging)
 ** =======================================================
 */
-
-static int sizei (const Instruction *i) {
-  switch((Opcode)i->i.code) {
-    case ISet: case ITestSet: case ISpan: return CHARSETINSTSIZE;
-    default: return 1;
-  }
-}
 
 
 void printcharset (const byte *st) {
@@ -41,22 +37,22 @@ void printcharset (const byte *st) {
 }
 
 
-static void printcapkind (int kind) {
+static const char *capkind (int kind) {
   const char *const modes[] = {
     "close", "position", "constant", "backref",
     "argument", "simple", "table", "function",
     "query", "string", "num", "substitution", "fold",
     "runtime", "group"};
-  printf("%s", modes[kind]);
+  return modes[kind];
 }
 
 
 static void printjmp (const Instruction *op, const Instruction *p) {
-  printf("-> %d", (int)(p + p->i.offset - op));
+  printf("-> %d", (int)(p + (p + 1)->offset - op));
 }
 
 
-static void printinst (const Instruction *op, const Instruction *p) {
+void printinst (const Instruction *op, const Instruction *p) {
   const char *const names[] = {
     "any", "char", "set",
     "testany", "testchar", "testset",
@@ -77,13 +73,12 @@ static void printinst (const Instruction *op, const Instruction *p) {
       break;
     }
     case IFullCapture: {
-      printcapkind(getkind(p));
-      printf(" (size = %d)  (idx = %d)", getoff(p), p->i.offset);
+      printf("%s (size = %d)  (idx = %d)",
+             capkind(getkind(p)), getoff(p), p->i.key);
       break;
     }
     case IOpenCapture: {
-      printcapkind(getkind(p));
-      printf(" (idx = %d)", p->i.offset);
+      printf("%s (idx = %d)", capkind(getkind(p)), p->i.key);
       break;
     }
     case ISet: {
@@ -91,7 +86,7 @@ static void printinst (const Instruction *op, const Instruction *p) {
       break;
     }
     case ITestSet: {
-      printcharset((p+1)->buff); printjmp(op, p);
+      printcharset((p+2)->buff); printjmp(op, p);
       break;
     }
     case ISpan: {
@@ -99,7 +94,7 @@ static void printinst (const Instruction *op, const Instruction *p) {
       break;
     }
     case IOpenCall: {
-      printf("-> %d", p->i.offset);
+      printf("-> %d", (p + 1)->offset);
       break;
     }
     case IBehind: {
@@ -128,8 +123,8 @@ void printpatt (Instruction *p, int n) {
 
 #if defined(LPEG_DEBUG)
 static void printcap (Capture *cap) {
-  printcapkind(cap->kind);
-  printf(" (idx: %d - size: %d) -> %p\n", cap->idx, cap->siz, cap->s);
+  printf("%s (idx: %d - size: %d) -> %p\n",
+         capkind(cap->kind), cap->idx, cap->siz, cap->s);
 }
 
 
@@ -181,7 +176,8 @@ void printtree (TTree *tree, int ident) {
       break;
     }
     case TOpenCall: case TCall: {
-      printf(" key: %d\n", tree->key);
+      assert(sib2(tree)->tag == TRule);
+      printf(" key: %d  (rule: %d)\n", tree->key, sib2(tree)->cap);
       break;
     }
     case TBehind: {
@@ -190,7 +186,7 @@ void printtree (TTree *tree, int ident) {
       break;
     }
     case TCapture: {
-      printf(" cap: %d  key: %d  n: %d\n", tree->cap, tree->key, tree->u.n);
+      printf(" kind: '%s'  key: %d\n", capkind(tree->cap), tree->key);
       printtree(sib1(tree), ident + 2);
       break;
     }
@@ -225,10 +221,10 @@ void printtree (TTree *tree, int ident) {
 
 void printktable (lua_State *L, int idx) {
   int n, i;
-  lua_getfenv(L, idx);
+  lua_getuservalue(L, idx);
   if (lua_isnil(L, -1))  /* no ktable? */
     return;
-  n = lua_objlen(L, -1);
+  n = lua_rawlen(L, -1);
   printf("[");
   for (i = 1; i <= n; i++) {
     printf("%d = ", i);

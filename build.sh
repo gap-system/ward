@@ -35,9 +35,9 @@ if have_luajit:
 	"luajit/bin/")
 
 # Build and install lpeg for both Lua and LuaJIT.
-sh('tools/run-python scons/scons -j 4 -C build/lpeg-0.11 prefix="'+root+'/lua" install')
+sh('tools/run-python scons/scons -j 4 -C build/lpeg-1.0.1 prefix="'+root+'/lua" install')
 if have_luajit:
-  sh('tools/run-python scons/scons -j 4 -C build/lpeg-0.11 luajit=yes prefix="'+root+'/luajit" install')
+  sh('tools/run-python scons/scons -j 4 -C build/lpeg-1.0.1 luajit=yes prefix="'+root+'/luajit" install')
   
 
 commands = [

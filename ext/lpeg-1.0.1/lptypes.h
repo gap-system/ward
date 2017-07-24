@@ -1,7 +1,7 @@
 /*
-** $Id: lptypes.h,v 1.4 2013/03/21 20:25:12 roberto Exp $
+** $Id: lptypes.h,v 1.16 2017/01/13 13:33:17 roberto Exp $
 ** LPeg - PEG pattern matching for Lua
-** Copyright 2007, Lua.org & PUC-Rio  (see 'lpeg.html' for license)
+** Copyright 2007-2017, Lua.org & PUC-Rio  (see 'lpeg.html' for license)
 ** written by Roberto Ierusalimschy
 */
 
@@ -14,11 +14,12 @@
 #endif
 
 #include <assert.h>
+#include <limits.h>
 
 #include "lua.h"
 
 
-#define VERSION         "0.11"
+#define VERSION         "1.0.1"
 
 
 #define PATTERN_T	"lpeg-pattern"
@@ -26,36 +27,38 @@
 
 
 /*
-** compatibility with Lua 5.2
+** compatibility with Lua 5.1
 */
-#if (LUA_VERSION_NUM == 502)
+#if (LUA_VERSION_NUM == 501)
 
-#undef lua_equal
-#define lua_equal(L,idx1,idx2)  lua_compare(L,(idx1),(idx2),LUA_OPEQ)
+#define lp_equal	lua_equal
 
-#undef lua_getfenv
-#define lua_getfenv	lua_getuservalue
-#undef lua_setfenv
-#define lua_setfenv	lua_setuservalue
+#define lua_getuservalue	lua_getfenv
+#define lua_setuservalue	lua_setfenv
 
-#undef lua_objlen
-#define lua_objlen	lua_rawlen
+#define lua_rawlen		lua_objlen
 
-#undef luaL_register
-#define luaL_register(L,n,f) \
-	{ if ((n) == NULL) luaL_setfuncs(L,f,0); else luaL_newlib(L,f); }
+#define luaL_setfuncs(L,f,n)	luaL_register(L,NULL,f)
+#define luaL_newlib(L,f)	luaL_register(L,"lpeg",f)
 
+#endif
+
+
+#if !defined(lp_equal)
+#define lp_equal(L,idx1,idx2)  lua_compare(L,(idx1),(idx2),LUA_OPEQ)
 #endif
 
 
 /* default maximum size for call/backtrack stack */
 #if !defined(MAXBACK)
-#define MAXBACK         100
+#define MAXBACK         400
 #endif
 
 
-/* maximum number of rules in a grammar */
-#define MAXRULES        200
+/* maximum number of rules in a grammar (limited by 'unsigned char') */
+#if !defined(MAXRULES)
+#define MAXRULES        250
+#endif
 
 
 
@@ -89,13 +92,15 @@ typedef unsigned char byte;
 
 
 
-typedef byte Charset[CHARSETSIZE];
+typedef struct Charset {
+  byte cs[CHARSETSIZE];
+} Charset;
 
 
 
 #define loopset(v,b)    { int v; for (v = 0; v < CHARSETSIZE; v++) {b;} }
 
-/* access to charset and literal strings */
+/* access to charset */
 #define treebuffer(t)      ((byte *)((t) + 1))
 
 /* number of slots needed for 'n' bytes */

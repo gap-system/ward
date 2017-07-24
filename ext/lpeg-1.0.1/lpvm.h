@@ -1,5 +1,5 @@
 /*
-** $Id: lpvm.h,v 1.1 2013/03/21 20:25:12 roberto Exp $
+** $Id: lpvm.h,v 1.3 2014/02/21 13:06:41 roberto Exp $
 */
 
 #if !defined(lpvm_h)
@@ -23,7 +23,7 @@ typedef enum Opcode {
   IChoice,  /* stack a choice; next fail will jump to 'offset' */
   IJmp,  /* jump to 'offset' */
   ICall,  /* call rule at 'offset' */
-  IOpenCall,  /* call rule number 'offset' (must be closed to a ICall) */
+  IOpenCall,  /* call rule number 'key' (must be closed to a ICall) */
   ICommit,  /* pop choice and jump to 'offset' */
   IPartialCommit,  /* update top choice to current position and jump */
   IBackCommit,  /* "fails" but jump to its own 'offset' */
@@ -42,20 +42,16 @@ typedef union Instruction {
   struct Inst {
     byte code;
     byte aux;
-    short offset;
+    short key;
   } i;
+  int offset;
   byte buff[1];
 } Instruction;
 
 
-int getposition (lua_State *L, int t, int i);
 void printpatt (Instruction *p, int n);
 const char *match (lua_State *L, const char *o, const char *s, const char *e,
                    Instruction *op, Capture *capture, int ptop);
-int verify (lua_State *L, Instruction *op, const Instruction *p,
-            Instruction *e, int postable, int rule);
-void checkrule (lua_State *L, Instruction *op, int from, int to,
-                int postable, int rule);
 
 
 #endif

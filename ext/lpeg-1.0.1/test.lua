@@ -1,6 +1,6 @@
-#!/usr/bin/env lua5.1
+#!/usr/bin/env lua
 
--- $Id: test.lua,v 1.98 2013/03/28 18:29:23 roberto Exp $
+-- $Id: test.lua,v 1.112 2017/01/14 18:55:22 roberto Exp $
 
 -- require"strict"    -- just to be pedantic
 
@@ -15,9 +15,6 @@ local a, b, c, d, e, f, g, p, t
 local unpack = rawget(table, "unpack") or unpack
 local loadstring = rawget(_G, "loadstring") or load
 
-
--- most tests here do not need much stack space
-m.setmaxstack(5)
 
 local any = m.P(1)
 local space = m.S" \t\n"^0
@@ -170,8 +167,8 @@ assert(m.match( basiclookfor((#m.P(b) * 1) * m.Cp()), "  (  (a)") == 7)
 a = {m.match(m.C(digit^1 * m.Cc"d") + m.C(letter^1 * m.Cc"l"), "123")}
 checkeq(a, {"123", "d"})
 
-a = {m.match(m.C(digit^1) * "d" * -1 + m.C(letter^1 * m.Cc"l"), "123d")}
-checkeq(a, {"123"})
+-- bug in LPeg 0.12  (nil value does not create a 'ktable')
+assert(m.match(m.Cc(nil), "") == nil)
 
 a = {m.match(m.C(digit^1 * m.Cc"d") + m.C(letter^1 * m.Cc"l"), "abcd")}
 checkeq(a, {"abcd", "l"})
@@ -194,6 +191,24 @@ checkeq(a, {1, 5})
 t = {m.match({[1] = m.C(m.C(1) * m.V(1) + -1)}, "abc")}
 checkeq(t, {"abc", "a", "bc", "b", "c", "c", ""})
 
+-- bug in 0.12 ('hascapture' did not check for captures inside a rule)
+do
+  local pat = m.P{
+    'S';
+    S1 = m.C('abc') + 3,
+    S = #m.V('S1')    -- rule has capture, but '#' must ignore it
+  }
+  assert(pat:match'abc' == 1)
+end
+
+
+-- bug: loop in 'hascaptures'
+do
+  local p = m.C(-m.P{m.P'x' * m.V(1) + m.P'y'})
+  assert(p:match("xxx") == "")
+end
+
+
 
 -- test for small capture boundary
 for i = 250,260 do
@@ -201,9 +216,8 @@ for i = 250,260 do
   assert(#m.match(m.C(m.C(i)), string.rep('a', i)) == i)
 end
 
-
 -- tests for any*n and any*-n
-for n = 1, 550 do
+for n = 1, 550, 13 do
   local x_1 = string.rep('x', n - 1)
   local x = x_1 .. 'a'
   assert(not m.P(n):match(x_1))
@@ -265,6 +279,13 @@ assert(not m.match(("aa" * m.P"bc"^-1 + "aab") * "e", "aabe"))
 
 assert(m.match("alo" * (m.P"\n" + -1), "alo") == 4)
 
+
+-- bug in 0.12 (rc1)
+assert(m.match((m.P"\128\187\191" + m.S"abc")^0, "\128\187\191") == 4)
+
+assert(m.match(m.S"\0\128\255\127"^0, string.rep("\0\128\255\127", 10)) ==
+    4*10 + 1)
+
 -- optimizations with optional parts
 assert(m.match(("ab" * -m.P"c")^-1, "abc") == 1)
 assert(m.match(("ab" * #m.P"c")^-1, "abd") == 1)
@@ -275,6 +296,13 @@ assert(m.match(m.P"ab"^-1 - "c", "abcd") == 3)
 
 p = ('Aa' * ('Bb' * ('Cc' * m.P'Dd'^0)^0)^0)^-1
 assert(p:match("AaBbCcDdBbCcDdDdDdBb") == 21)
+
+
+-- bug in 0.12.2
+-- p = { ('ab' ('c' 'ef'?)*)? }
+p = m.C(('ab' * ('c' * m.P'ef'^-1)^0)^-1)
+s = "abcefccefc"
+assert(s == p:match(s))
  
 
 pi = "3.14159 26535 89793 23846 26433 83279 50288 41971 69399 37510"
@@ -336,10 +364,16 @@ checkeq(t, {hi = 10, ho = 20})
 t = p:match'abc'
 checkeq(t, {hi = 10, ho = 20, 'a', 'b', 'c'})
 
+-- non-string group names
+p = m.Ct(m.Cg(1, print) * m.Cg(1, 23.5) * m.Cg(1, io))
+t = p:match('abcdefghij')
+assert(t[print] == 'a' and t[23.5] == 'b' and t[io] == 'c')
+
 
 -- test for error messages
-local function checkerr (msg, ...)
-  assert(m.match({ m.P(msg) + 1 * m.V(1) }, select(2, pcall(...))))
+local function checkerr (msg, f, ...)
+  local st, err = pcall(f, ...)
+  assert(not st and m.match({ m.P(msg) + 1 * m.V(1) }, err))
 end
 
 checkerr("rule '1' may be left recursive", m.match, { m.V(1) * 'a' }, "a")
@@ -362,6 +396,32 @@ p = {'a',
   g = m.P''
 }
 checkerr("rule 'a' may be left recursive", m.match, p, "a")
+
+-- Bug in peephole optimization of LPeg 0.12 (IJmp -> ICommit)
+-- the next grammar has an original sequence IJmp -> ICommit -> IJmp L1
+-- that is optimized to ICommit L1
+
+p = m.P { (m.P {m.P'abc'} + 'ayz') * m.V'y'; y = m.P'x' }
+assert(p:match('abcx') == 5 and p:match('ayzx') == 5 and not p:match'abc')
+
+
+do
+  -- large dynamic Cc
+  local lim = 2^16 - 1
+  local c = 0
+  local function seq (n) 
+    if n == 1 then c = c + 1; return m.Cc(c)
+    else
+      local m = math.floor(n / 2)
+      return seq(m) * seq(n - m)
+    end
+  end
+  p = m.Ct(seq(lim))
+  t = p:match('')
+  assert(t[lim] == lim)
+  checkerr("too many", function () p = p / print end)
+  checkerr("too many", seq, lim + 1)
+end
 
 
 -- tests for non-pattern as arguments to pattern functions
@@ -465,6 +525,27 @@ assert(m.match(m.Cs((#((#m.P"a")/"") * 1 + m.P(1)/".")^0), "aloal") == "a..a.")
 assert(m.match(m.Cs((- -m.P("a") * 1 + m.P(1)/".")^0), "aloal") == "a..a.")
 assert(m.match(m.Cs((-((-m.P"a")/"") * 1 + m.P(1)/".")^0), "aloal") == "a..a.")
 
+
+-- fixed length
+do
+  -- 'and' predicate using fixed length
+  local p = m.C(#("a" * (m.P("bd") + "cd")) * 2)
+  assert(p:match("acd") == "ac")
+
+  p = #m.P{ "a" * m.V(2), m.P"b" } * 2
+  assert(p:match("abc") == 3)
+
+  p = #(m.P"abc" * m.B"c")
+  assert(p:match("abc") == 1 and not p:match("ab"))
+ 
+  p = m.P{ "a" * m.V(2), m.P"b"^1 }
+  checkerr("pattern may not have fixed length", m.B, p)
+
+  p = "abc" * (m.P"b"^1 + m.P"a"^0)
+  checkerr("pattern may not have fixed length", m.B, p)
+end
+
+
 p = -m.P'a' * m.Cc(1) + -m.P'b' * m.Cc(2) + -m.P'c' * m.Cc(3)
 assert(p:match('a') == 2 and p:match('') == 1 and p:match('b') == 1)
 
@@ -481,7 +562,10 @@ assert(m.match(1 * m.B(1), 'a') == 2)
 assert(m.match(-m.B(1), 'a') == 1)
 assert(m.match(m.B(250), string.rep('a', 250)) == nil)
 assert(m.match(250 * m.B(250), string.rep('a', 250)) == 251)
-assert(not pcall(m.B, 260))
+
+-- look-behind with an open call
+checkerr("pattern may not have fixed length", m.B, m.V'S1')
+checkerr("too long to look behind", m.B, 260)
 
 B = #letter * -m.B(letter) + -letter * m.B(letter)
 x = m.Ct({ (B * m.Cp())^-1 * (1 * m.V(1) + m.P(true)) })
@@ -548,12 +632,18 @@ assert(not p:match(string.rep("011", 10001)))
 -- this grammar does need backtracking info.
 local lim = 10000
 p = m.P{ '0' * m.V(1) + '0' }
-assert(not pcall(m.match, p, string.rep("0", lim)))
+checkerr("stack overflow", m.match, p, string.rep("0", lim))
 m.setmaxstack(2*lim)
-assert(not pcall(m.match, p, string.rep("0", lim)))
+checkerr("stack overflow", m.match, p, string.rep("0", lim))
 m.setmaxstack(2*lim + 4)
-assert(pcall(m.match, p, string.rep("0", lim)))
-m.setmaxstack(5)   -- restore original limit
+assert(m.match(p, string.rep("0", lim)) == lim + 1)
+
+-- this repetition should not need stack space (only the call does)
+p = m.P{ ('a' * m.V(1))^0 * 'b' + 'c' }
+m.setmaxstack(200)
+assert(p:match(string.rep('a', 180) .. 'c' .. string.rep('b', 180)) == 362)
+
+m.setmaxstack(100)   -- restore low limit
 
 -- tests for optional start position
 assert(m.match("a", "abc", 1))
@@ -575,10 +665,10 @@ print("+")
 
 
 -- tests for argument captures
-assert(not pcall(m.Carg, 0))
-assert(not pcall(m.Carg, -1))
-assert(not pcall(m.Carg, 2^18))
-assert(not pcall(m.match, m.Carg(1), 'a', 1))
+checkerr("invalid argument", m.Carg, 0)
+checkerr("invalid argument", m.Carg, -1)
+checkerr("invalid argument", m.Carg, 2^18)
+checkerr("absent extra argument #1", m.match, m.Carg(1), 'a', 1)
 assert(m.match(m.Carg(1), 'a', 1, print) == print)
 x = {m.match(m.Carg(1) * m.Carg(2), '', 1, 10, 20)}
 checkeq(x, {10, 20})
@@ -599,7 +689,7 @@ assert(m.match(m.Cmt(m.Cg(m.Carg(3), "a") *
 
 t = {}
 s = ""
-p = function (s1, i) assert(s == s1); t[#t + 1] = i; return nil end
+p = m.P(function (s1, i) assert(s == s1); t[#t + 1] = i; return nil end) * false
 s = "hi, this is a test"
 assert(m.match(((p - m.P(-1)) + 2)^0, s) == string.len(s) + 1)
 assert(#t == string.len(s)/2 and t[1] == 1 and t[2] == 3)
@@ -621,7 +711,7 @@ assert(#t == string.len(s) and t[1] == 2 and t[2] == 3)
 
 t = {}
 p = m.P(function (s1, i) assert(s == s1); t[#t + 1] = i;
-                         return i <= s1:len() and i + 1 end)
+                         return i <= s1:len() and i end) * 1
 s = "hi, this is a test"
 assert(m.match(p^0, s) == string.len(s) + 1)
 assert(#t == string.len(s) + 1 and t[1] == 1 and t[2] == 2)
@@ -631,14 +721,16 @@ assert(m.match(p, "aaaa") == 5)
 assert(m.match(p, "abaa") == 2)
 assert(not m.match(p, "baaa"))
 
-assert(not pcall(m.match, function () return 2^20 end, s))
-assert(not pcall(m.match, function () return 0 end, s))
-assert(not pcall(m.match, function (s, i) return i - 1 end, s))
-assert(not pcall(m.match, m.P(1)^0 * function (_, i) return i - 1 end, s))
+checkerr("invalid position", m.match, function () return 2^20 end, s)
+checkerr("invalid position", m.match, function () return 0 end, s)
+checkerr("invalid position", m.match, function (s, i) return i - 1 end, s)
+checkerr("invalid position", m.match,
+             m.P(1)^0 * function (_, i) return i - 1 end, s)
 assert(m.match(m.P(1)^0 * function (_, i) return i end * -1, s))
-assert(not pcall(m.match, m.P(1)^0 * function (_, i) return i + 1 end, s))
+checkerr("invalid position", m.match,
+             m.P(1)^0 * function (_, i) return i + 1 end, s)
 assert(m.match(m.P(function (s, i) return s:len() + 1 end) * -1, s))
-assert(not pcall(m.match, m.P(function (s, i) return s:len() + 2 end) * -1, s))
+checkerr("invalid position", m.match, m.P(function (s, i) return s:len() + 2 end) * -1, s)
 assert(not m.match(m.P(function (s, i) return s:len() end) * -1, s))
 assert(m.match(m.P(1)^0 * function (_, i) return true end, s) ==
        string.len(s) + 1)
@@ -646,8 +738,8 @@ for i = 1, string.len(s) + 1 do
   assert(m.match(function (_, _) return i end, s) == i)
 end
 
-p = (m.P(function (s, i) return i%2 == 0 and i + 1 end)
-  +  m.P(function (s, i) return i%2 ~= 0 and i + 2 <= s:len() and i + 3 end))^0
+p = (m.P(function (s, i) return i%2 == 0 and i end) * 1
+  +  m.P(function (s, i) return i%2 ~= 0 and i + 2 <= s:len() and i end) * 3)^0
   * -1
 assert(p:match(string.rep('a', 14000)))
 
@@ -682,6 +774,10 @@ checkeq(t, {1, 1, "a", "b", "c"})
 t = {m.match(m.Cc(nil,nil,4) * m.Cc(nil,3) * m.Cc(nil, nil) / g / g, "")}
 t1 = {1,1,nil,nil,4,nil,3,nil,nil}
 for i=1,10 do assert(t[i] == t1[i]) end
+
+-- bug in 0.12.2: ktable with only nil could be eliminated when joining
+-- with a pattern without ktable
+assert((m.P"aaa" * m.Cc(nil)):match"aaa" == nil)
 
 t = {m.match((m.C(1) / function (x) return x, x.."x" end)^0, "abc")}
 checkeq(t, {"a", "ax", "b", "bx", "c", "cx"})
@@ -721,9 +817,9 @@ assert(m.match(m.Cs((m.P(1) / ".xx")^0), "abcd") == ".xx.xx.xx.xx")
 assert(m.match(m.Cp() * m.P(3) * m.Cp()/"%2%1%1 - %0 ", "abcde") ==
    "411 - abc ")
 
-assert(pcall(m.match, m.P(1)/"%0", "abc"))
-assert(not pcall(m.match, m.P(1)/"%1", "abc"))   -- out of range
-assert(not pcall(m.match, m.P(1)/"%9", "abc"))   -- out of range
+assert(m.match(m.P(1)/"%0", "abc") == "a")
+checkerr("invalid capture index", m.match, m.P(1)/"%1", "abc")
+checkerr("invalid capture index", m.match, m.P(1)/"%9", "abc")
 
 p = m.C(1)
 p = p * p; p = p * p; p = p * p * m.C(1) / "%9 - %1"
@@ -741,7 +837,7 @@ assert(m.match(m.C(1)^0 / "%9-%1-%0-%3", s) == "9-1-" .. s .. "-3")
 p = m.Cc('alo') * m.C(1) / "%1 - %2 - %1"
 assert(p:match'x' == 'alo - x - alo')
 
-assert(not pcall(m.match, m.Cc(true) / "%1", "a"))
+checkerr("invalid capture value (a boolean)", m.match, m.Cc(true) / "%1", "a")
 
 -- long strings for string capture
 l = 10000
@@ -769,35 +865,37 @@ checkeq(t, {a="b", c="du", xux="yuy"})
 
 -- errors in accumulator capture
 
--- very long match (forces fold to be a pair open-close) producing with
 -- no initial capture
-assert(not pcall(m.match, m.Cf(m.P(500), print), string.rep('a', 600)))
+checkerr("no initial value", m.match, m.Cf(m.P(5), print), 'aaaaaa')
+-- no initial capture (very long match forces fold to be a pair open-close)
+checkerr("no initial value", m.match, m.Cf(m.P(500), print),
+                               string.rep('a', 600))
 
 -- nested capture produces no initial value
-assert(not pcall(m.match, m.Cf(m.P(1) / {}, print), "alo"))
+checkerr("no initial value", m.match, m.Cf(m.P(1) / {}, print), "alo")
 
 
 -- tests for loop checker
 
-local function haveloop (p)
-  assert(not pcall(function (p) return p^0 end, m.P(p)))
+local function isnullable (p)
+  checkerr("may accept empty string", function (p) return p^0 end, m.P(p))
 end
 
-haveloop(m.P("x")^-4)
+isnullable(m.P("x")^-4)
 assert(m.match(((m.P(0) + 1) * m.S"al")^0, "alo") == 3)
 assert(m.match((("x" + #m.P(1))^-4 * m.S"al")^0, "alo") == 3)
-haveloop("")
-haveloop(m.P("x")^0)
-haveloop(m.P("x")^-1)
-haveloop(m.P("x") + 1 + 2 + m.P("a")^-1)
-haveloop(-m.P("ab"))
-haveloop(- -m.P("ab"))
-haveloop(# #(m.P("ab") + "xy"))
-haveloop(- #m.P("ab")^0)
-haveloop(# -m.P("ab")^1)
-haveloop(#m.V(3))
-haveloop(m.V(3) + m.V(1) + m.P('a')^-1)
-haveloop({[1] = m.V(2) * m.V(3), [2] = m.V(3), [3] = m.P(0)})
+isnullable("")
+isnullable(m.P("x")^0)
+isnullable(m.P("x")^-1)
+isnullable(m.P("x") + 1 + 2 + m.P("a")^-1)
+isnullable(-m.P("ab"))
+isnullable(- -m.P("ab"))
+isnullable(# #(m.P("ab") + "xy"))
+isnullable(- #m.P("ab")^0)
+isnullable(# -m.P("ab")^1)
+isnullable(#m.V(3))
+isnullable(m.V(3) + m.V(1) + m.P('a')^-1)
+isnullable({[1] = m.V(2) * m.V(3), [2] = m.V(3), [3] = m.P(0)})
 assert(m.match(m.P{[1] = m.V(2) * m.V(3), [2] = m.V(3), [3] = m.P(1)}^0, "abc")
        == 3)
 assert(m.match(m.P""^-3, "a") == 1)
@@ -881,12 +979,19 @@ print"+"
 
 
 -- tests for back references
-assert(not pcall(m.match, m.Cb('x'), ''))
-assert(not pcall(m.match, m.Cg(1, 'a') * m.Cb('b'), 'a'))
+checkerr("back reference 'x' not found", m.match, m.Cb('x'), '')
+checkerr("back reference 'b' not found", m.match, m.Cg(1, 'a') * m.Cb('b'), 'a')
 
 p = m.Cg(m.C(1) * m.C(1), "k") * m.Ct(m.Cb("k"))
 t = p:match("ab")
 checkeq(t, {"a", "b"})
+
+p = m.P(true)
+for i = 1, 10 do p = p * m.Cg(1, i) end
+for i = 1, 10 do
+  local p = p * m.Cb(i)
+  assert(p:match('abcdefghij') == string.sub('abcdefghij', i, i))
+end
 
 
 t = {}
@@ -906,6 +1011,12 @@ checkeq(t, {'ab',
 
 
 -- tests for match-time captures
+
+p = m.P'a' * (function (s, i) return (s:sub(i, i) == 'b') and i + 1 end)
+  + 'acd'
+
+assert(p:match('abc') == 3)
+assert(p:match('acd') == 4)
 
 local function id (s, i, ...)
   return true, ...
@@ -927,12 +1038,12 @@ x = {(m.Cmt(1, id)^0):match(string.rep('a', 500))}
 assert(#x == 500)
 
 local function id(s, i, x)
-  if x == 'a' then return i + 1, 1, 3, 7
+  if x == 'a' then return i, 1, 3, 7
   else return nil, 2, 4, 6, 8
   end   
 end     
 
-p = ((m.P(id) + m.Cmt(2, id)  + m.Cmt(1, id)))^0
+p = ((m.P(id) * 1 + m.Cmt(2, id) * 1  + m.Cmt(1, id) * 1))^0
 assert(table.concat{p:match('abababab')} == string.rep('137', 4))
 
 local function ref (s, i, x)
@@ -958,6 +1069,28 @@ p = (any - p)^0 * p * any^0 * -1
 
 assert(p:match'abbbc-bc ddaa' == 'BC')
 
+do   -- match-time captures cannot be optimized away
+  local touch = 0
+  f = m.P(function () touch = touch + 1; return true end)
+
+  local function check(n) n = n or 1; assert(touch == n); touch = 0 end
+
+  assert(m.match(f * false + 'b', 'a') == nil); check()
+  assert(m.match(f * false + 'b', '') == nil); check()
+  assert(m.match( (f * 'a')^0 * 'b', 'b') == 2); check()
+  assert(m.match( (f * 'a')^0 * 'b', '') == nil); check()
+  assert(m.match( (f * 'a')^-1 * 'b', 'b') == 2); check()
+  assert(m.match( (f * 'a')^-1 * 'b', '') == nil); check()
+  assert(m.match( ('b' + f * 'a')^-1 * 'b', '') == nil); check()
+  assert(m.match( (m.P'b'^-1 * f * 'a')^-1 * 'b', '') == nil); check()
+  assert(m.match( (-m.P(1) * m.P'b'^-1 * f * 'a')^-1 * 'b', '') == nil);
+     check()
+  assert(m.match( (f * 'a' + 'b')^-1 * 'b', '') == nil); check()
+  assert(m.match(f * 'a' + f * 'b', 'b') == 2); check(2)
+  assert(m.match(f * 'a' + f * 'b', 'a') == 2); check(1)
+  assert(m.match(-f * 'a' + 'b', 'b') == 2); check(1)
+  assert(m.match(-f * 'a' + 'b', '') == nil); check(1)
+end
 
 c = '[' * m.Cg(m.P'='^0, "init") * '[' *
     { m.Cmt(']' * m.C(m.P'='^0) * ']' * m.Cb("init"), function (_, _, s1, s2)
@@ -994,9 +1127,35 @@ do
   assert(c == 11)
 end
 
+
+-- Return a match-time capture that returns 'n' captures
+local function manyCmt (n)
+    return m.Cmt("a", function ()
+             local a = {}; for i = 1, n do a[i] = n - i end
+             return true, unpack(a)
+           end)
+end
+
+-- bug in 1.0: failed match-time that used previous match-time results
+do
+  local x
+  local function aux (...) x = #{...}; return false end
+  local res = {m.match(m.Cmt(manyCmt(20), aux) + manyCmt(10), "a")}
+  assert(#res == 10 and res[1] == 9 and res[10] == 0)
+end
+
+
+-- bug in 1.0: problems with math-times returning too many captures
+do
+  local lim = 2^11 - 10
+  local res = {m.match(manyCmt(lim), "a")}
+  assert(#res == lim and res[1] == lim - 1 and res[lim] == 0)
+  checkerr("too many", m.match, manyCmt(2^15), "a")
+end
+
 p = (m.P(function () return true, "a" end) * 'a'
   + m.P(function (s, i) return i, "aa", 20 end) * 'b'
-  + m.P(function (s,i) if i <= #s then return i + 1, "aaa" end end))^0
+  + m.P(function (s,i) if i <= #s then return i, "aaa" end end) * 1)^0
 
 t = {p:match('abacc')}
 checkeq(t, {'a', 'aa', 20, 'a', 'aaa', 'aaa'})
@@ -1329,8 +1488,7 @@ assert(rev:match"0123456789" == "9876543210")
 -- testing error messages in re
 
 local function errmsg (p, err)
-  local s, msg = pcall(re.compile, p)
-  assert(not s and string.find(msg, err))
+  checkerr(err, re.compile, p)
 end
 
 errmsg('aaaa', "rule 'aaaa'")
