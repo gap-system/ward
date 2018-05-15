@@ -770,9 +770,14 @@ local grammar = pattern {
   iso_ext_float_type =
     -- ISO/IEC TS 18661-3:2015 defines C support for additional
     -- floating types _Floatn and _Floatnx,
+    keyword "_Float16" * value(type_float) +
     keyword "_Float32" * value(type_float) +
     keyword "_Float64" * value(type_float) +
-    keyword "_Float128" * value(type_float),
+    keyword "_Float128" * value(type_float) +
+    keyword "_Float16x" * value(type_float) +
+    keyword "_Float32x" * value(type_float) +
+    keyword "_Float64x" * value(type_float) +
+    keyword "_Float128x" * value(type_float),
   integral_type = 
     keyword "int" * value(type_int) +
     keyword "short" * sp * rule "integral_type" +
