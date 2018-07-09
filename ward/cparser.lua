@@ -546,7 +546,7 @@ local function build_for_stmt(init, cond, step, body)
   return init_node, exit_node
 end
 
-local function build_compount_stmt_local_variables(str, pos, declarations)
+local function build_compound_stmt_local_variables(str, pos, declarations)
   local local_declarations = { }
   for _, declaration in ipairs(declarations) do
     local name, type, vpos, value = unpack(declaration)
@@ -886,8 +886,10 @@ local grammar = pattern {
   opt_asm_declaration =
     (sp * (keyword "asm" + keyword "__asm__" + keyword "__asm") * sp *
       pattern "(" * sp * string_constant * sp * pattern ")")^-1,
-  init_expression_list = (rule "init_expression" * (sp * pattern "," * sp *
-    rule "init_expression")^0 * (sp * pattern ",")^-1)^-1,
+  init_expression_list_part =
+    (pattern "[" * sp * expression * sp * pattern "]" * sp * pattern "=" * sp) ^ 0 * rule "init_expression",
+  init_expression_list = (rule "init_expression_list_part" * (sp * pattern "," * sp *
+    rule "init_expression_list_part")^0 * (sp * pattern ",")^-1)^-1,
   init_expression = action(pattern "{" * position() * sp *
     rule "init_expression_list" * sp * pattern "}",
     function(str, pos, init_pos)
@@ -1102,7 +1104,7 @@ local grammar = pattern {
         aggregate(
           aggregate((rule "statement" * sp) ^ 0) *
             (aggregate(action(rule "variable_declaration" * sp,
-                              build_compount_stmt_local_variables) ^ 1) *
+                              build_compound_stmt_local_variables) ^ 1) *
                aggregate((rule "statement" * sp) ^ 0)) ^ 0
         ) *
         pattern "}" * position(),
