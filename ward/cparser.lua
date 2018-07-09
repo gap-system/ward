@@ -1025,9 +1025,11 @@ local grammar = pattern {
     rule "aggregate_expression"+
     rule "vararg_expr",
   aggregate_expression =
-    action(pattern "{" * sp * ("." * sp)^-1 *rule "expression" *
-      (sp * pattern "," * sp * ("." * sp)^-1 *rule "expression")^0 *
-      (pattern ",")^-1 * sp * pattern "}", function(str, pos)
+    action(pattern "{" *
+             (sp * ("." * sp)^-1 *rule "expression" *
+                (sp * pattern "," * sp * ("." * sp)^-1 *rule "expression")^0 *
+                (pattern ",")^-1) ^ 0 *
+             sp * pattern "}", function(str, pos)
         return pos, new(ExprConstant)
       end),
   stmt_expression =
