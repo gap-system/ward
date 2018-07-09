@@ -546,6 +546,38 @@ local function build_for_stmt(init, cond, step, body)
   return init_node, exit_node
 end
 
+local function build_compount_stmt_local_variables(str, pos, declarations)
+  local local_declarations = { }
+  for _, declaration in ipairs(declarations) do
+    local name, type, vpos, value = unpack(declaration)
+    local storage = declaration[5]
+    if type:is_function() then
+      local funcdef = storage
+      funcdef.type = type.result_type
+      funcdef.arg_types = type.arg_types
+      funcdef.name = name
+      funcdef.filename = source_file_name
+      funcdef.graph = nil
+      if storage.static then
+        if not static_functions[name] then
+          static_functions[name] = funcdef
+        end
+      else
+        if not global_functions[name] then
+          global_functions[name] = funcdef
+        end
+      end
+    else
+      if storage.extern then
+        global_variables[name] = type
+      else
+        push(local_declarations, declaration);
+      end
+    end
+  end
+  return pos, local_declarations
+end
+
 local function build_compound_stmt_part(decls, stmts)
   local first, last
   local head_node = make_node()
@@ -1060,47 +1092,20 @@ local grammar = pattern {
     function (str, pos, start, body, cond, finish)
       return pos, { build_do_stmt, start, finish, body, cond }
     end),
-  compound_statement = action(action(pattern "{", function(str, pos)
-      return pos, pos-1
-    end) * sp *
-    aggregate(
-      aggregate((rule "statement" * sp) ^ 0) *
-      (aggregate(action(rule "variable_declaration" * sp,
-	function(str, pos, declarations)
-	  local local_declarations = { }
-	  for _, declaration in ipairs(declarations) do
-	    local name, type, vpos, value = unpack(declaration)
-	    local storage = declaration[5]
-	    if type:is_function() then
-	      local funcdef = storage
-	      funcdef.type = type.result_type
-	      funcdef.arg_types = type.arg_types
-	      funcdef.name = name
-	      funcdef.filename = source_file_name
-	      funcdef.graph = nil
-	      if storage.static then
-		if not static_functions[name] then
-		  static_functions[name] = funcdef
-		end
-	      else
-		if not global_functions[name] then
-		  global_functions[name] = funcdef
-		end
-	      end
-	    else
-	      if storage.extern then
-		global_variables[name] = type
-	      else
-		push(local_declarations, declaration);
-	      end
-	    end
-	  end
-	  return pos, local_declarations
-	end) ^ 1) *
-      aggregate((rule "statement" * sp) ^ 0)) ^ 0
-    ) * pattern "}" * position(),
-    function(str, pos, start, decls_and_stmts, finish)
-      return pos, { build_compound_stmt, start, finish, decls_and_stmts }
+  compound_statement =
+    action(
+      action(pattern "{", function(str, pos)
+               return pos, pos-1
+      end) * sp *
+        aggregate(
+          aggregate((rule "statement" * sp) ^ 0) *
+            (aggregate(action(rule "variable_declaration" * sp,
+                              build_compount_stmt_local_variables) ^ 1) *
+               aggregate((rule "statement" * sp) ^ 0)) ^ 0
+        ) *
+        pattern "}" * position(),
+      function(str, pos, start, decls_and_stmts, finish)
+        return pos, { build_compound_stmt, start, finish, decls_and_stmts }
     end),
   -- Warning: The following hack allows ward to parse C99 'for' loops which declare
   -- variables in their init section, like in this snippet:
